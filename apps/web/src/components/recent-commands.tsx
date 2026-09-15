@@ -38,7 +38,7 @@ export function RecentCommands({
   const rows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
+    <div className="flex min-h-72 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card md:min-h-0 md:flex-1">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
         <p className="text-sm font-medium text-foreground">Recent commands</p>
         <Link
@@ -48,7 +48,7 @@ export function RecentCommands({
           View all logs
         </Link>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-none">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-none touch-pan-y">
         <Table>
           <TableHeader>
             <TableRow>

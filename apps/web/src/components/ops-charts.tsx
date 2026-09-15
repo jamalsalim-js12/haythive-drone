@@ -53,7 +53,10 @@ export function SocTrendChart({
       </p>
       <ChartContainer
         config={socConfig}
-        className={cn("w-full", compact ? "aspect-[2.6/1]" : "aspect-[2/1]")}
+        className={cn(
+          "w-full",
+          compact ? "aspect-[3.2/1] sm:aspect-[2.6/1]" : "aspect-[2/1]",
+        )}
       >
         <AreaChart
           data={data}
@@ -101,7 +104,10 @@ export function CommandOutcomesChart({
       </p>
       <ChartContainer
         config={outcomeConfig}
-        className={cn("w-full", compact ? "aspect-[2.6/1]" : "aspect-[2/1]")}
+        className={cn(
+          "w-full",
+          compact ? "aspect-[3.2/1] sm:aspect-[2.6/1]" : "aspect-[2/1]",
+        )}
       >
         <BarChart data={data} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
@@ -151,7 +157,10 @@ export function HeartbeatChart({
       </p>
       <ChartContainer
         config={hbConfig}
-        className={cn("w-full", compact ? "aspect-[2.6/1]" : "aspect-[2.4/1]")}
+        className={cn(
+          "w-full",
+          compact ? "aspect-[3.2/1] sm:aspect-[2.6/1]" : "aspect-[2.4/1]",
+        )}
       >
         <LineChart
           data={data}

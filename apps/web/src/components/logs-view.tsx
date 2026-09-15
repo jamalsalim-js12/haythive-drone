@@ -190,7 +190,7 @@ export function LogsView() {
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-2 scrollbar-none sm:px-6">
+      <div className="min-h-48 flex-1 basis-0 overflow-y-auto overscroll-contain px-4 py-2 touch-pan-y scrollbar-none sm:px-6">
         {source === "commands" ? (
           <Table>
             <TableHeader>

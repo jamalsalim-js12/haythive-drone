@@ -32,10 +32,10 @@ export function DockBoard() {
         </div>
       ) : null}
 
-      <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-4 pb-28 sm:px-6 md:flex-row md:pb-6">
+      <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 pb-28 scrollbar-none sm:px-6 md:flex-row md:overflow-hidden md:pb-6">
         <ActuatorRail />
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
+        <div className="flex min-w-0 flex-col gap-4 md:min-h-0 md:flex-1 md:overflow-hidden">
           <div className="shrink-0">
             <ChargeReadiness state={activeState} />
           </div>
