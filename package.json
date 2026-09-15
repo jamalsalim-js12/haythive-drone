@@ -1,0 +1,24 @@
+{
+  "name": "haythive",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "dev": "pnpm --filter @haythive/web dev",
+    "build": "pnpm --filter @haythive/web build",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "lint:ci": "biome ci ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6"
+  },
+  "lint-staged": {
+    "*": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"
+  },
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=20"
+  }
+}
