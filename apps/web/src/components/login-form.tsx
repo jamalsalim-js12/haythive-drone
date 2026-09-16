@@ -1,18 +1,25 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  getGetAuthMeQueryKey,
+  usePostAuthLogin,
+} from "@/api/generated/endpoints/auth/auth";
 import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSession } from "@/hooks/use-session";
-import { setSession } from "@/lib/auth";
+import { getErrorMessage } from "@/lib/api-mappers";
 
 export function LoginForm() {
   const router = useRouter();
-  const { isAuthenticated } = useSession();
-  const [email, setEmail] = useState("ops@haythive.com");
+  const queryClient = useQueryClient();
+  const { isAuthenticated, isLoading } = useSession();
+  const loginMutation = usePostAuthLogin();
+  const [email, setEmail] = useState("operator@haythive.local");
   const [password, setPassword] = useState("demo");
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +28,14 @@ export function LoginForm() {
       router.replace("/");
     }
   }, [isAuthenticated, router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background text-sm text-muted-foreground">
+        Checking session…
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden bg-background px-4">
@@ -53,8 +68,31 @@ export function LoginForm() {
               return;
             }
             setError(null);
-            setSession(email.trim());
-            router.replace("/");
+            loginMutation.mutate(
+              { data: { email: email.trim(), password } },
+              {
+                onSuccess: async (result) => {
+                  if (result.status !== 200) {
+                    setError("Sign in failed.");
+                    return;
+                  }
+                  queryClient.setQueryData(getGetAuthMeQueryKey(), {
+                    data: result.data,
+                    status: 200,
+                    headers: result.headers,
+                  });
+                  await queryClient.invalidateQueries({
+                    queryKey: getGetAuthMeQueryKey(),
+                  });
+                  router.replace("/");
+                },
+                onError: (err) => {
+                  setError(
+                    getErrorMessage(err) ?? "Invalid email or password.",
+                  );
+                },
+              },
+            );
           }}
         >
           <div className="flex flex-col gap-2">
@@ -78,15 +116,20 @@ export function LoginForm() {
             />
           </div>
           {error ? (
-            <p className="text-sm text-destructive">{error}</p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Demo mode — any non-empty credentials work.
+            <p className="text-sm text-destructive" role="alert">
+              {error}
             </p>
-          )}
-          <Button type="submit" className="w-full" size="lg">
-            Sign in
+          ) : null}
+          <Button
+            type="submit"
+            className="mt-2 w-full"
+            disabled={loginMutation.isPending}
+          >
+            {loginMutation.isPending ? "Signing in…" : "Sign in"}
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Demo: operator@haythive.local / demo
+          </p>
         </form>
       </div>
     </div>

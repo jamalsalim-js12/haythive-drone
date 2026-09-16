@@ -9,13 +9,41 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useDockStore } from "@/lib/dock-store";
 
 export function DockBoard() {
-  const { activeDevice, activeState, commands, socSeries, commandOutcomes } =
-    useDockStore();
+  const {
+    activeDevice,
+    activeState,
+    commands,
+    socSeries,
+    commandOutcomes,
+    isLoading,
+    isError,
+    errorMessage,
+  } = useDockStore();
 
   const stale =
     activeState.connectivity === "DEGRADED" ||
     activeState.connectivity === "OFFLINE";
 
+  if (isLoading && !activeDevice.id) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+        Loading dock…
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-4">
+        <Alert variant="destructive" className="max-w-lg">
+          <AlertTitle>Cannot reach control plane</AlertTitle>
+          <AlertDescription>
+            {errorMessage ?? "Check that the API is running on port 3001."}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <InstrumentStrip device={activeDevice} state={activeState} />
