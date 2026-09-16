@@ -47,7 +47,9 @@ export function PwaInstallPrompt() {
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:justify-end">
       <div className="pointer-events-auto flex max-w-sm items-start gap-3 rounded-xl border border-border bg-card p-3 shadow-lg">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">Install HaytHive</p>
+          <p className="text-sm font-medium text-foreground">
+            Install HaytHive
+          </p>
           <p className="text-xs text-muted-foreground">
             Add to your home screen for a full-screen dock console.
           </p>

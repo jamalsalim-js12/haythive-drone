@@ -4,7 +4,14 @@
   "scripts": {
     "prepare": "husky",
     "dev": "pnpm --filter @haythive/web dev",
-    "build": "pnpm --filter @haythive/web build",
+    "dev:api": "pnpm --filter @haythive/api dev",
+    "dev:web": "pnpm --filter @haythive/web dev",
+    "build": "pnpm -r run build",
+    "build:api": "pnpm --filter @haythive/api build",
+    "build:web": "pnpm --filter @haythive/web build",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @haythive/api prisma:migrate",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "lint:ci": "biome ci ."
@@ -20,5 +27,14 @@
   "packageManager": "pnpm@10.15.0",
   "engines": {
     "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "unrs-resolver"
+    ]
   }
 }

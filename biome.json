@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -13,7 +13,16 @@
       "!**/.next",
       "!**/node_modules",
       "!**/.turbo",
-      "!**/apps/web/src/components/ui"
+      "!**/apps/web/src/components/ui",
+      "!**/apps/web/public/sw.js",
+      "!**/apps/web/public/sw.js.map",
+      "!**/apps/web/public/workbox-*.js",
+      "!**/apps/web/public/workbox-*.js.map",
+      "!**/apps/web/public/swe-worker-*.js",
+      "!**/apps/web/public/swe-worker-*.js.map",
+      "!**/apps/web/public/fallback-*.js",
+      "!**/apps/api/generated",
+      "!**/node_modules/.prisma"
     ]
   },
   "formatter": {
@@ -24,9 +33,12 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "complexity": {
         "noImportantStyles": "off"
+      },
+      "style": {
+        "useImportType": "off"
       }
     }
   },

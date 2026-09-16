@@ -166,7 +166,9 @@ export function HealthView() {
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell className="font-mono text-xs">{row.code}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {row.code}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant="outline"
