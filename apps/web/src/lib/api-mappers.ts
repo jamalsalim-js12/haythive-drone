@@ -1,7 +1,11 @@
+import type { CommandResponseDto } from "@/api/generated/models/commandResponseDto";
 import type { DeviceResponseDto } from "@/api/generated/models/deviceResponseDto";
 import type { DeviceStateResponseDto } from "@/api/generated/models/deviceStateResponseDto";
 import type {
   ChargeStatus,
+  Command,
+  CommandStatus,
+  CommandType,
   Connectivity,
   Device,
   DeviceState,
@@ -51,6 +55,22 @@ export function mapDeviceState(dto: DeviceStateResponseDto): DeviceState {
     readinessChecks,
     lastHeartbeatAt: asString(dto.lastHeartbeatAt, new Date(0).toISOString()),
     updatedAt: dto.updatedAt,
+  };
+}
+
+export function mapCommand(
+  dto: CommandResponseDto,
+  actorEmail: string,
+): Command {
+  return {
+    id: dto.id,
+    deviceId: dto.deviceId,
+    type: dto.type as CommandType,
+    status: dto.status as CommandStatus,
+    actorEmail,
+    createdAt: dto.createdAt,
+    completedAt: asString(dto.completedAt) || undefined,
+    message: asString(dto.message) || undefined,
   };
 }
 

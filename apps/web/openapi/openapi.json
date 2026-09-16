@@ -206,6 +206,83 @@
         "tags": ["Devices"]
       }
     },
+    "/actuators/commands": {
+      "post": {
+        "description": "Persists a lid or platform command, validates soft interlocks, marks it SENT, and dispatches it to the edge adapter. The stub edge later ACKs and updates projected dock state.",
+        "operationId": "postActuatorsCommands",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateActuatorCommandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CommandResponseDto" }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid session." },
+          "404": { "description": "Device not found." },
+          "409": {
+            "description": "Interlock rejected the command or device has no state."
+          }
+        },
+        "security": [{ "cookie": [] }],
+        "summary": "Dispatch a dock actuator command",
+        "tags": ["Actuators"]
+      }
+    },
+    "/actuators/commands/{id}/abort": {
+      "post": {
+        "description": "Stops an active (PENDING/SENT) lid or platform command, notifies the edge adapter, marks the original command FAILED, records an ACKED ABORT command, and sets moving axes to UNKNOWN.",
+        "operationId": "postActuatorsCommandsByIdAbort",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbortActuatorCommandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CommandResponseDto" }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid session." },
+          "404": { "description": "Command not found." },
+          "409": {
+            "description": "Command is not active or dock is not moving."
+          }
+        },
+        "security": [{ "cookie": [] }],
+        "summary": "Abort an in-progress actuator command",
+        "tags": ["Actuators"]
+      }
+    },
     "/health": {
       "get": {
         "description": "Returns process health and whether the database connection is reachable.",
@@ -240,6 +317,10 @@
     {
       "name": "Devices",
       "description": "Dock device registry and live projected state."
+    },
+    {
+      "name": "Actuators",
+      "description": "Lid and platform actuator commands dispatched to the dock edge."
     },
     {
       "name": "Device Ingest",
@@ -465,6 +546,95 @@
           "readinessReasons",
           "updatedAt"
         ]
+      },
+      "CreateActuatorCommandDto": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "description": "Target dock device id.",
+            "example": "clxdevice001"
+          },
+          "type": {
+            "type": "string",
+            "description": "Actuator command to dispatch to the edge.",
+            "enum": [
+              "LID_OPEN",
+              "LID_CLOSE",
+              "PLATFORM_RAISE",
+              "PLATFORM_LOWER"
+            ],
+            "example": "LID_OPEN"
+          }
+        },
+        "required": ["deviceId", "type"]
+      },
+      "CommandResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "clxcmd001" },
+          "deviceId": { "type": "string", "example": "clxdevice001" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "LID_OPEN",
+              "LID_CLOSE",
+              "PLATFORM_RAISE",
+              "PLATFORM_LOWER",
+              "ABORT"
+            ],
+            "example": "LID_OPEN"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING", "SENT", "ACKED", "FAILED", "TIMEOUT"],
+            "example": "SENT"
+          },
+          "actorId": {
+            "type": "object",
+            "description": "Operator user id that issued the command.",
+            "nullable": true
+          },
+          "message": {
+            "type": "object",
+            "description": "Human-readable status or error detail.",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO-8601 creation timestamp.",
+            "example": "2026-09-16T11:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "ISO-8601 last update timestamp.",
+            "example": "2026-09-16T11:00:00.100Z"
+          },
+          "completedAt": {
+            "type": "object",
+            "description": "ISO-8601 completion timestamp when terminal.",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "deviceId",
+          "type",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "AbortActuatorCommandDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Optional human-readable reason for the abort.",
+            "example": "Operator halted motion",
+            "maxLength": 500
+          }
+        }
       },
       "DeviceConnectivitySummaryDto": {
         "type": "object",

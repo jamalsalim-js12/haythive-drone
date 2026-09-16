@@ -1,11 +1,23 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useSyncExternalStore } from "react";
 import {
+  usePostActuatorsCommands,
+  usePostActuatorsCommandsByIdAbort,
+} from "@/api/generated/endpoints/actuators/actuators";
+import {
+  getGetDevicesByIdStateQueryKey,
   useGetDevices,
   useGetDevicesByIdState,
 } from "@/api/generated/endpoints/devices/devices";
-import { getErrorMessage, mapDevice, mapDeviceState } from "@/lib/api-mappers";
+import { useSession } from "@/hooks/use-session";
+import {
+  getErrorMessage,
+  mapCommand,
+  mapDevice,
+  mapDeviceState,
+} from "@/lib/api-mappers";
 import {
   buildCommandOutcomes,
   buildFaults,
@@ -23,8 +35,6 @@ import type {
   FaultEvent,
 } from "@/lib/types";
 
-const MOTION_MS = 1600;
-
 type StoreState = {
   activeDeviceId: string | null;
   devices: Device[];
@@ -33,10 +43,20 @@ type StoreState = {
   audit: AuditEvent[];
   faults: FaultEvent[];
   pendingCommandId: string | null;
-  motionTimer: ReturnType<typeof setTimeout> | null;
 };
 
+type DispatchResult =
+  | { ok: true; commandId: string }
+  | { ok: false; reason: string };
+
 type Listener = () => void;
+
+const API_COMMAND_TYPES = new Set<CommandType>([
+  "LID_OPEN",
+  "LID_CLOSE",
+  "PLATFORM_RAISE",
+  "PLATFORM_LOWER",
+]);
 
 function cloneState(s: DeviceState): DeviceState {
   return {
@@ -131,7 +151,6 @@ function createStore() {
     audit: buildInitialAudit(),
     faults: buildFaults(),
     pendingCommandId: null,
-    motionTimer: null,
   };
 
   const listeners = new Set<Listener>();
@@ -166,13 +185,46 @@ function createStore() {
   }
 
   function hydrateState(deviceState: DeviceState) {
-    if (state.pendingCommandId) return;
+    const pendingId = state.pendingCommandId;
+    const motionComplete = Boolean(
+      pendingId && deviceState.opState !== "MOVING",
+    );
+
     state = {
       ...state,
+      pendingCommandId: motionComplete ? null : pendingId,
       states: {
         ...state.states,
         [deviceState.deviceId]: cloneState(deviceState),
       },
+      commands: motionComplete
+        ? state.commands.map((c) =>
+            c.id === pendingId
+              ? {
+                  ...c,
+                  status: deviceState.opState === "FAULT" ? "FAILED" : "ACKED",
+                  completedAt: new Date().toISOString(),
+                }
+              : c,
+          )
+        : state.commands,
+      audit: motionComplete
+        ? [
+            {
+              id: `aud-${pendingId}-done`,
+              deviceId: deviceState.deviceId,
+              action:
+                deviceState.opState === "FAULT"
+                  ? "command.failed"
+                  : "command.acked",
+              actorEmail: null,
+              entityType: "command" as const,
+              entityId: pendingId as string,
+              createdAt: new Date().toISOString(),
+            },
+            ...state.audit,
+          ]
+        : state.audit,
     };
     emit();
   }
@@ -200,147 +252,91 @@ function createStore() {
     return interlockReason(active, type);
   }
 
-  function finishMotion(
-    commandId: string,
-    deviceId: string,
-    type: CommandType,
-    success: boolean,
-  ) {
-    const prev = state.states[deviceId];
-    if (!prev) return;
-
-    let next = cloneState(prev);
-    next.opState = success ? "IDLE" : "FAULT";
-    next.updatedAt = new Date().toISOString();
-    next.lastHeartbeatAt = new Date().toISOString();
-
-    if (success) {
-      if (type === "LID_OPEN") next.lid = "OPEN";
-      if (type === "LID_CLOSE") next.lid = "CLOSED";
-      if (type === "PLATFORM_RAISE") next.platform = "UP";
-      if (type === "PLATFORM_LOWER") next.platform = "DOWN";
-      if (type === "ABORT") {
-        if (next.lid === "MOVING") next.lid = "UNKNOWN";
-        if (next.platform === "MOVING") next.platform = "UNKNOWN";
+  function applySentCommand(command: Command) {
+    const current = state.states[command.deviceId];
+    let next = current ? cloneState(current) : null;
+    if (next) {
+      next.opState = "MOVING";
+      next.updatedAt = new Date().toISOString();
+      if (command.type === "LID_OPEN" || command.type === "LID_CLOSE") {
+        next.lid = "MOVING";
       }
+      if (
+        command.type === "PLATFORM_RAISE" ||
+        command.type === "PLATFORM_LOWER"
+      ) {
+        next.platform = "MOVING";
+      }
+      next = recomputeReadiness(next);
     }
 
-    next = recomputeReadiness(next);
+    const audit: AuditEvent = {
+      id: `aud-${command.id}`,
+      deviceId: command.deviceId,
+      action: "command.sent",
+      actorEmail: command.actorEmail,
+      entityType: "command",
+      entityId: command.id,
+      createdAt: new Date().toISOString(),
+      meta: { type: command.type },
+    };
+
+    state = {
+      ...state,
+      pendingCommandId: command.id,
+      states: next
+        ? { ...state.states, [command.deviceId]: next }
+        : state.states,
+      commands: [command, ...state.commands],
+      audit: [audit, ...state.audit],
+    };
+    emit();
+  }
+
+  function applyAbort(abortCommand: Command, abortedCommandId: string) {
+    const deviceId = abortCommand.deviceId;
+    const current = state.states[deviceId];
+    let next = current ? cloneState(current) : null;
+    if (next) {
+      next.opState = "IDLE";
+      next.updatedAt = new Date().toISOString();
+      if (next.lid === "MOVING") next.lid = "UNKNOWN";
+      if (next.platform === "MOVING") next.platform = "UNKNOWN";
+      next = recomputeReadiness(next);
+    }
 
     state = {
       ...state,
       pendingCommandId: null,
-      motionTimer: null,
-      states: { ...state.states, [deviceId]: next },
-      commands: state.commands.map((c) =>
-        c.id === commandId
-          ? {
-              ...c,
-              status: success ? "ACKED" : "FAILED",
-              completedAt: new Date().toISOString(),
-              message: success ? undefined : "Simulated fault",
-            }
-          : c,
-      ),
+      states: next ? { ...state.states, [deviceId]: next } : state.states,
+      commands: [
+        abortCommand,
+        ...state.commands.map((c) =>
+          c.id === abortedCommandId
+            ? {
+                ...c,
+                status: "FAILED" as const,
+                completedAt: new Date().toISOString(),
+                message: abortCommand.message,
+              }
+            : c,
+        ),
+      ],
       audit: [
         {
-          id: `aud-${commandId}-done`,
+          id: `aud-${abortCommand.id}`,
           deviceId,
-          action: success ? "command.acked" : "command.failed",
-          actorEmail: "operator@haythive.local",
+          action: "command.aborted",
+          actorEmail: abortCommand.actorEmail,
           entityType: "command" as const,
-          entityId: commandId,
+          entityId: abortedCommandId,
           createdAt: new Date().toISOString(),
-          meta: { type },
+          meta: { abortCommandId: abortCommand.id },
         },
         ...state.audit,
       ],
     };
     emit();
-  }
-
-  function dispatchCommand(type: CommandType) {
-    const deviceId = state.activeDeviceId;
-    if (!deviceId) return { ok: false as const, reason: "No dock selected" };
-    const current = state.states[deviceId];
-    if (!current)
-      return { ok: false as const, reason: "Dock state unavailable" };
-    const blocked = interlockReason(current, type);
-    if (blocked) return { ok: false as const, reason: blocked };
-
-    if (state.motionTimer) {
-      clearTimeout(state.motionTimer);
-    }
-
-    const commandId = `cmd-${Date.now()}`;
-    const command: Command = {
-      id: commandId,
-      deviceId,
-      type,
-      status: "SENT",
-      actorEmail: "operator@haythive.local",
-      createdAt: new Date().toISOString(),
-    };
-
-    let next = cloneState(current);
-    next.opState = type === "ABORT" ? "IDLE" : "MOVING";
-    next.updatedAt = new Date().toISOString();
-
-    if (type === "LID_OPEN" || type === "LID_CLOSE") next.lid = "MOVING";
-    if (type === "PLATFORM_RAISE" || type === "PLATFORM_LOWER") {
-      next.platform = "MOVING";
-    }
-    if (type === "ABORT") {
-      if (next.lid === "MOVING") next.lid = "UNKNOWN";
-      if (next.platform === "MOVING") next.platform = "UNKNOWN";
-    }
-
-    next = recomputeReadiness(next);
-
-    const audit: AuditEvent = {
-      id: `aud-${commandId}`,
-      deviceId,
-      action: `command.${type.toLowerCase()}`,
-      actorEmail: "operator@haythive.local",
-      entityType: "command",
-      entityId: commandId,
-      createdAt: new Date().toISOString(),
-    };
-
-    if (type === "ABORT") {
-      state = {
-        ...state,
-        pendingCommandId: null,
-        motionTimer: null,
-        states: { ...state.states, [deviceId]: next },
-        commands: [
-          {
-            ...command,
-            status: "ACKED",
-            completedAt: new Date().toISOString(),
-          },
-          ...state.commands,
-        ],
-        audit: [audit, ...state.audit],
-      };
-      emit();
-      return { ok: true as const, commandId };
-    }
-
-    const timer = setTimeout(() => {
-      finishMotion(commandId, deviceId, type, true);
-    }, MOTION_MS);
-
-    state = {
-      ...state,
-      pendingCommandId: commandId,
-      motionTimer: timer,
-      states: { ...state.states, [deviceId]: next },
-      commands: [command, ...state.commands],
-      audit: [audit, ...state.audit],
-    };
-    emit();
-    return { ok: true as const, commandId };
   }
 
   return {
@@ -351,7 +347,12 @@ function createStore() {
     setActiveDevice,
     canCommand,
     whyBlocked,
-    dispatchCommand,
+    applySentCommand,
+    applyAbort,
+    getActiveDeviceId: () => state.activeDeviceId,
+    getPendingCommandId: () => state.pendingCommandId,
+    getLatestSentCommandId: () =>
+      state.commands.find((c) => c.status === "SENT")?.id ?? null,
     getSocSeries: (deviceId: string) => buildSocSeries(deviceId),
     getCommandOutcomes: () => buildCommandOutcomes(),
     getHeartbeatSeries: (deviceId: string) => buildHeartbeatSeries(deviceId),
@@ -375,6 +376,12 @@ const EMPTY_STATE: DeviceState = {
 };
 
 export function useDockStore() {
+  const queryClient = useQueryClient();
+  const { session } = useSession();
+  const actorEmail = session?.email ?? "operator@haythive.local";
+  const commandMutation = usePostActuatorsCommands();
+  const abortMutation = usePostActuatorsCommandsByIdAbort();
+
   const snapshot = useSyncExternalStore(
     store.subscribe,
     store.getSnapshot,
@@ -403,7 +410,8 @@ export function useDockStore() {
   const stateQuery = useGetDevicesByIdState(activeDeviceId, {
     query: {
       enabled: Boolean(activeDeviceId),
-      refetchInterval: snapshot.pendingCommandId ? false : 2_500,
+      // Keep polling during motion so stub edge ACKs hydrate the UI.
+      refetchInterval: 1_500,
     },
   });
 
@@ -412,6 +420,85 @@ export function useDockStore() {
       store.hydrateState(mapDeviceState(stateQuery.data.data));
     }
   }, [stateQuery.data]);
+
+  async function dispatchCommand(type: CommandType): Promise<DispatchResult> {
+    if (type === "ABORT") {
+      const blocked = store.whyBlocked("ABORT");
+      if (blocked) return { ok: false, reason: blocked };
+
+      const abortedCommandId =
+        store.getPendingCommandId() ?? store.getLatestSentCommandId();
+      if (!abortedCommandId) {
+        return { ok: false, reason: "No active command to abort" };
+      }
+
+      const deviceId = store.getActiveDeviceId() ?? activeDeviceId;
+      try {
+        const response = await abortMutation.mutateAsync({
+          id: abortedCommandId,
+          data: { reason: "Operator aborted motion" },
+        });
+
+        if (response.status !== 200) {
+          return { ok: false, reason: "Abort was rejected" };
+        }
+
+        store.applyAbort(
+          mapCommand(response.data, actorEmail),
+          abortedCommandId,
+        );
+        if (deviceId) {
+          await queryClient.invalidateQueries({
+            queryKey: getGetDevicesByIdStateQueryKey(deviceId),
+          });
+        }
+        return { ok: true, commandId: response.data.id };
+      } catch (error: unknown) {
+        return {
+          ok: false,
+          reason: getErrorMessage(error) ?? "Abort failed",
+        };
+      }
+    }
+
+    if (!API_COMMAND_TYPES.has(type)) {
+      return { ok: false, reason: "Unsupported command" };
+    }
+
+    const deviceId = store.getActiveDeviceId() ?? activeDeviceId;
+    if (!deviceId) return { ok: false, reason: "No dock selected" };
+
+    const blocked = store.whyBlocked(type);
+    if (blocked) return { ok: false, reason: blocked };
+
+    try {
+      const response = await commandMutation.mutateAsync({
+        data: {
+          deviceId,
+          type: type as
+            | "LID_OPEN"
+            | "LID_CLOSE"
+            | "PLATFORM_RAISE"
+            | "PLATFORM_LOWER",
+        },
+      });
+
+      if (response.status !== 201) {
+        return { ok: false, reason: "Command was rejected" };
+      }
+
+      store.applySentCommand(mapCommand(response.data, actorEmail));
+      await queryClient.invalidateQueries({
+        queryKey: getGetDevicesByIdStateQueryKey(deviceId),
+      });
+      return { ok: true, commandId: response.data.id };
+    } catch (error: unknown) {
+      return {
+        ok: false,
+        reason: getErrorMessage(error) ?? "Command failed",
+      };
+    }
+  }
 
   const activeDevice =
     devices.find((d) => d.id === activeDeviceId) ?? devices[0];
@@ -437,10 +524,12 @@ export function useDockStore() {
     audit: snapshot.audit,
     faults,
     pendingCommandId: snapshot.pendingCommandId,
+    isCommandPending: commandMutation.isPending || abortMutation.isPending,
+    isAbortPending: abortMutation.isPending,
     setActiveDevice: store.setActiveDevice,
     canCommand: store.canCommand,
     whyBlocked: store.whyBlocked,
-    dispatchCommand: store.dispatchCommand,
+    dispatchCommand,
     socSeries: store.getSocSeries(activeDeviceId || "unknown"),
     commandOutcomes: store.getCommandOutcomes(),
     heartbeatSeries: store.getHeartbeatSeries(activeDeviceId || "unknown"),

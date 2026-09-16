@@ -33,6 +33,10 @@ async function bootstrap() {
     .addTag("Auth", "Operator authentication and session management.")
     .addTag("Devices", "Dock device registry and live projected state.")
     .addTag(
+      "Actuators",
+      "Lid and platform actuator commands dispatched to the dock edge.",
+    )
+    .addTag(
       "Device Ingest",
       "Edge/simulator heartbeat and dock state ingestion.",
     )
