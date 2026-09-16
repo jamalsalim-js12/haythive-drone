@@ -21,6 +21,7 @@
       "!**/apps/web/public/swe-worker-*.js",
       "!**/apps/web/public/swe-worker-*.js.map",
       "!**/apps/web/public/fallback-*.js",
+      "!**/apps/web/src/api/generated",
       "!**/apps/api/generated",
       "!**/node_modules/.prisma"
     ]
