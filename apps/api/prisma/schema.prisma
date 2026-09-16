@@ -7,10 +7,194 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Placeholder model so the initial migration is non-empty.
-/// Dock domain models (User, Device, DeviceState, Command, AuditEvent) land in KON-36.
-model SchemaMeta {
-  id        String   @id @default("haythive-dock")
+// ---------------------------------------------------------------------------
+// Enums (dock MVP)
+// Documented for operators/API: keep in sync with apps/web/src/lib/types.ts
+// ---------------------------------------------------------------------------
+
+/// Dashboard / API operator roles.
+enum UserRole {
+  OPERATOR
+  TECHNICIAN
+}
+
+/// Edge link health derived from heartbeats.
+enum Connectivity {
+  ONLINE
+  OFFLINE
+  DEGRADED
+}
+
+/// High-level dock operational mode.
+enum OpState {
+  IDLE
+  MOVING
+  FAULT
+  SERVICE
+}
+
+/// Motorized lid position.
+enum LidState {
+  OPEN
+  CLOSED
+  MOVING
+  UNKNOWN
+}
+
+/// Landing platform position.
+enum PlatformState {
+  UP
+  DOWN
+  MOVING
+  UNKNOWN
+}
+
+/// Battery charging interface status.
+enum ChargeStatus {
+  UNKNOWN
+  NOT_CHARGING
+  CHARGING
+  CHARGED
+  FAULT
+}
+
+/// Aggregate readiness for launch-prep (MVP: dock healthy + charge OK).
+enum Readiness {
+  READY
+  NOT_READY
+}
+
+/// Actuator / abort commands accepted by the control plane.
+enum CommandType {
+  LID_OPEN
+  LID_CLOSE
+  PLATFORM_RAISE
+  PLATFORM_LOWER
+  ABORT
+}
+
+/// Command dispatch lifecycle.
+enum CommandStatus {
+  PENDING
+  SENT
+  ACKED
+  FAILED
+  TIMEOUT
+}
+
+/// Audit row classification.
+enum AuditEntityType {
+  COMMAND
+  STATE
+  HEALTH
+  AUTH
+  DEVICE
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(OPERATOR)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  commands    Command[]
+  auditEvents AuditEvent[]
+}
+
+/// Optional site grouping; MVP may deploy a single site with one dock.
+model Site {
+  id        String   @id @default(cuid())
+  name      String
+  timezone  String   @default("UTC")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  devices Device[]
+}
+
+model Device {
+  id              String    @id @default(cuid())
+  siteId          String?
+  name            String
+  serial          String    @unique
+  /// Shared secret / token hash for edge ingest auth (set in later tickets).
+  ingestTokenHash String?
+  lastHeartbeatAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  site        Site?        @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  state       DeviceState?
+  commands    Command[]
+  auditEvents AuditEvent[]
+
+  @@index([siteId])
+}
+
+/// Latest projected dock state (1:1 with Device). History lives in AuditEvent / future telemetry.
+model DeviceState {
+  id               String        @id @default(cuid())
+  deviceId         String        @unique
+  connectivity     Connectivity  @default(OFFLINE)
+  opState          OpState       @default(IDLE)
+  lid              LidState      @default(UNKNOWN)
+  platform         PlatformState @default(UNKNOWN)
+  chargeStatus     ChargeStatus  @default(UNKNOWN)
+  /// Optional state-of-charge percent from edge (0–100).
+  socPercent       Int?
+  readiness        Readiness     @default(NOT_READY)
+  /// Human-readable readiness check results, e.g. [{ id, label, pass, detail }].
+  readinessReasons Json          @default("[]")
+  /// Last fault summary or override flags from edge.
+  extras           Json?
+  updatedAt        DateTime      @updatedAt
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+}
+
+model Command {
+  id          String        @id @default(cuid())
+  deviceId    String
+  actorId     String?
+  type        CommandType
+  status      CommandStatus @default(PENDING)
+  /// Original request payload sent toward the edge.
+  request     Json?
+  /// Edge ack / error payload.
+  response    Json?
+  message     String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  completedAt DateTime?
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([deviceId, createdAt])
+  @@index([status])
+}
+
+/// Append-only operational audit trail.
+model AuditEvent {
+  id         String          @id @default(cuid())
+  deviceId   String?
+  actorId    String?
+  action     String
+  entityType AuditEntityType
+  entityId   String
+  meta       Json?
+  createdAt  DateTime        @default(now())
+
+  device Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  actor  User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([deviceId, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }
