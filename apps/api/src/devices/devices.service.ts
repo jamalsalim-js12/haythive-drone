@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { HeartbeatMonitorService } from "../device-ingest/heartbeat-monitor.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { DeviceResponseDto } from "./dto/device-response.dto";
 import {
@@ -8,7 +9,10 @@ import {
 
 @Injectable()
 export class DevicesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly heartbeatMonitor: HeartbeatMonitorService,
+  ) {}
 
   async findAll(): Promise<DeviceResponseDto[]> {
     const devices = await this.prisma.device.findMany({
@@ -80,7 +84,10 @@ export class DevicesService {
   ): DeviceStateResponseDto {
     return {
       deviceId,
-      connectivity: state.connectivity,
+      connectivity: this.heartbeatMonitor.projectConnectivity(
+        lastHeartbeatAt,
+        state.connectivity,
+      ),
       opState: state.opState,
       lid: state.lid,
       platform: state.platform,
