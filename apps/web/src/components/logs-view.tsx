@@ -77,9 +77,7 @@ export function LogsView() {
           >
             <SelectTrigger className="min-w-36 bg-card">
               <SelectValue>
-                {(value) =>
-                  value === "audit" ? "Audit events" : "Commands"
-                }
+                {(value) => (value === "audit" ? "Audit events" : "Commands")}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>

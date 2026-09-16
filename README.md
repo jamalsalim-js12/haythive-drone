@@ -4,13 +4,34 @@ Monorepo for the HaytHive dock management POC.
 
 ## Apps
 
-- `apps/web` — Next.js operator dashboard (dummy data)
+- `apps/web` — Next.js operator dashboard (dummy data for now)
+- `apps/api` — NestJS control plane (Prisma + OpenAPI)
+
+## Prerequisites
+
+- Node.js 20+
+- pnpm 10
+- Docker (for local Postgres)
+
+## Setup
+
+```bash
+pnpm install
+pnpm db:up
+cp apps/api/.env.example apps/api/.env
+pnpm db:migrate
+```
 
 ## Develop
 
 ```bash
-pnpm install
-pnpm dev
+# API on http://localhost:3001
+pnpm dev:api
+
+# Web on http://localhost:3000
+pnpm dev:web
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Sign in with any non-empty email and password.
+- API health: http://localhost:3001/health
+- Swagger: http://localhost:3001/api/docs
+- OpenAPI JSON: http://localhost:3001/api/docs-json

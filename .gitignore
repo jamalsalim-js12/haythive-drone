@@ -19,3 +19,4 @@ apps/web/public/workbox-*.js
 apps/web/public/workbox-*.js.map
 apps/web/public/swe-worker-*.js
 apps/web/public/swe-worker-*.js.map
+apps/web/public/fallback-*.js
