@@ -18,6 +18,7 @@ import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { HeartbeatMonitorService } from "../device-ingest/heartbeat-monitor.service";
 import { EDGE_ADAPTER, EdgeAdapter } from "../edge/edge-adapter";
 import { PrismaService } from "../prisma/prisma.service";
+import { AbortActuatorCommandDto } from "./dto/abort-actuator-command.dto";
 import { CommandResponseDto } from "./dto/command-response.dto";
 import { CreateActuatorCommandDto } from "./dto/create-actuator-command.dto";
 import { interlockReason } from "./interlocks";
@@ -131,6 +132,146 @@ export class ActuatorsService {
     }
 
     return this.toResponse(command);
+  }
+
+  async abortCommand(
+    commandId: string,
+    dto: AbortActuatorCommandDto,
+    actor: AuthenticatedUser,
+  ): Promise<CommandResponseDto> {
+    const command = await this.prisma.command.findUnique({
+      where: { id: commandId },
+      include: {
+        device: { include: { state: true } },
+      },
+    });
+
+    if (!command) {
+      throw new NotFoundException(`Command ${commandId} not found.`);
+    }
+
+    if (
+      command.status !== CommandStatus.SENT &&
+      command.status !== CommandStatus.PENDING
+    ) {
+      throw new ConflictException(
+        `Command ${commandId} is not active (status ${command.status}).`,
+      );
+    }
+
+    if (command.type === CommandType.ABORT) {
+      throw new ConflictException("Cannot abort an abort command.");
+    }
+
+    const deviceState = command.device.state;
+    if (!deviceState) {
+      throw new ConflictException(
+        `Device ${command.deviceId} has no projected state.`,
+      );
+    }
+    if (deviceState.opState !== OpState.MOVING) {
+      throw new ConflictException(
+        "Dock is not moving — nothing to abort for this command.",
+      );
+    }
+
+    const reason = dto.reason?.trim() || "Operator aborted motion";
+    const now = new Date();
+
+    const abortCommand = await this.prisma.$transaction(async (tx) => {
+      await tx.command.update({
+        where: { id: command.id },
+        data: {
+          status: CommandStatus.FAILED,
+          completedAt: now,
+          message: reason,
+          response: {
+            aborted: true,
+            abortedBy: actor.id,
+            reason,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      const createdAbort = await tx.command.create({
+        data: {
+          deviceId: command.deviceId,
+          actorId: actor.id,
+          type: CommandType.ABORT,
+          status: CommandStatus.ACKED,
+          completedAt: now,
+          request: {
+            abortedCommandId: command.id,
+            abortedType: command.type,
+            reason,
+          } as Prisma.InputJsonValue,
+          response: {
+            source: "control-plane",
+            ackedAt: now.toISOString(),
+          } as Prisma.InputJsonValue,
+          message: reason,
+        },
+      });
+
+      await tx.deviceState.update({
+        where: { deviceId: command.deviceId },
+        data: {
+          opState: OpState.IDLE,
+          ...(deviceState.lid === LidState.MOVING
+            ? { lid: LidState.UNKNOWN }
+            : {}),
+          ...(deviceState.platform === PlatformState.MOVING
+            ? { platform: PlatformState.UNKNOWN }
+            : {}),
+        },
+      });
+
+      await tx.device.update({
+        where: { id: command.deviceId },
+        data: { lastHeartbeatAt: now },
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          deviceId: command.deviceId,
+          actorId: actor.id,
+          action: "command.aborted",
+          entityType: AuditEntityType.COMMAND,
+          entityId: command.id,
+          meta: {
+            abortCommandId: createdAbort.id,
+            abortedType: command.type,
+            reason,
+          },
+        },
+      });
+
+      return createdAbort;
+    });
+
+    try {
+      await this.edgeAdapter.abort({
+        commandId: command.id,
+        deviceId: command.deviceId,
+        abortedType: command.type,
+        reason,
+      });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Edge abort failed";
+      await this.prisma.auditEvent.create({
+        data: {
+          deviceId: command.deviceId,
+          actorId: actor.id,
+          action: "command.abort_edge_failed",
+          entityType: AuditEntityType.COMMAND,
+          entityId: command.id,
+          meta: { message },
+        },
+      });
+    }
+
+    return this.toResponse(abortCommand);
   }
 
   private async markFailed(

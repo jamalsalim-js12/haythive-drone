@@ -10,7 +10,11 @@ import {
   Prisma,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
-import { EdgeAdapter, EdgeCommandDispatch } from "./edge-adapter";
+import {
+  EdgeAbortRequest,
+  EdgeAdapter,
+  EdgeCommandDispatch,
+} from "./edge-adapter";
 
 @Injectable()
 export class StubEdgeAdapter implements EdgeAdapter, OnModuleDestroy {
@@ -35,10 +39,7 @@ export class StubEdgeAdapter implements EdgeAdapter, OnModuleDestroy {
       `Stub edge accepted ${command.type} for device ${command.deviceId} (ack in ${motionMs}ms)`,
     );
 
-    const existing = this.timers.get(command.commandId);
-    if (existing) {
-      clearTimeout(existing);
-    }
+    this.clearTimer(command.commandId);
 
     const timer = setTimeout(() => {
       this.timers.delete(command.commandId);
@@ -51,6 +52,21 @@ export class StubEdgeAdapter implements EdgeAdapter, OnModuleDestroy {
     }, motionMs);
 
     this.timers.set(command.commandId, timer);
+  }
+
+  async abort(request: EdgeAbortRequest): Promise<void> {
+    this.clearTimer(request.commandId);
+    this.logger.debug(
+      `Stub edge aborted ${request.abortedType} (${request.commandId}) on device ${request.deviceId}`,
+    );
+  }
+
+  private clearTimer(commandId: string): void {
+    const existing = this.timers.get(commandId);
+    if (existing) {
+      clearTimeout(existing);
+      this.timers.delete(commandId);
+    }
   }
 
   private async complete(command: EdgeCommandDispatch): Promise<void> {

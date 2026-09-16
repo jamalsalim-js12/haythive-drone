@@ -49,10 +49,15 @@ function ActuatorButton({
   icon: ComponentType<{ className?: string; "data-icon"?: string }>;
   className?: string;
 }) {
-  const { canCommand, whyBlocked, dispatchCommand, isCommandPending } =
-    useDockStore();
+  const {
+    canCommand,
+    whyBlocked,
+    dispatchCommand,
+    isCommandPending,
+    pendingCommandId,
+  } = useDockStore();
   const blocked = whyBlocked(type);
-  const enabled = canCommand(type) && !isCommandPending;
+  const enabled = canCommand(type) && !isCommandPending && !pendingCommandId;
 
   const button = (
     <Button
@@ -124,12 +129,12 @@ function ControlPanel({ compact = false }: { compact?: boolean }) {
     dispatchCommand,
     activeState,
     activeDevice,
-    isCommandPending,
+    isAbortPending,
   } = useDockStore();
   const [abortOpen, setAbortOpen] = useState(false);
   const abortBlocked = whyBlocked("ABORT");
   const moving = activeState.opState === "MOVING";
-  const abortEnabled = canCommand("ABORT") && !isCommandPending;
+  const abortEnabled = canCommand("ABORT") && !isAbortPending;
 
   return (
     <div className={cn("flex flex-col", compact ? "gap-4" : "gap-4")}>
