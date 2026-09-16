@@ -31,6 +31,7 @@ async function bootstrap() {
     .setVersion("0.1.0")
     .addCookieAuth("haythive_session")
     .addTag("Auth", "Operator authentication and session management.")
+    .addTag("Devices", "Dock device registry and live projected state.")
     .addTag("Health", "Service and dependency health checks.")
     .build();
 
