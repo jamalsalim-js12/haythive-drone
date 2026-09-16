@@ -6,6 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './commandResponseDto';
+export * from './commandResponseDtoActorId';
+export * from './commandResponseDtoCompletedAt';
+export * from './commandResponseDtoMessage';
+export * from './commandResponseDtoStatus';
+export * from './commandResponseDtoType';
+export * from './createActuatorCommandDto';
+export * from './createActuatorCommandDtoType';
 export * from './deviceConnectivitySummaryDto';
 export * from './deviceIngestDto';
 export * from './deviceIngestDtoChargeStatus';
