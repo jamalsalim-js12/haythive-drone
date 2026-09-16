@@ -49,9 +49,10 @@ function ActuatorButton({
   icon: ComponentType<{ className?: string; "data-icon"?: string }>;
   className?: string;
 }) {
-  const { canCommand, whyBlocked, dispatchCommand } = useDockStore();
+  const { canCommand, whyBlocked, dispatchCommand, isCommandPending } =
+    useDockStore();
   const blocked = whyBlocked(type);
-  const enabled = canCommand(type);
+  const enabled = canCommand(type) && !isCommandPending;
 
   const button = (
     <Button
@@ -63,7 +64,7 @@ function ActuatorButton({
       )}
       disabled={!enabled}
       onClick={() => {
-        if (enabled) dispatchCommand(type);
+        if (enabled) void dispatchCommand(type);
       }}
     >
       <Icon data-icon="inline-start" />
@@ -117,11 +118,18 @@ function actuatorTone(value: string): "signal" | "caution" | "muted" {
 }
 
 function ControlPanel({ compact = false }: { compact?: boolean }) {
-  const { canCommand, whyBlocked, dispatchCommand, activeState, activeDevice } =
-    useDockStore();
+  const {
+    canCommand,
+    whyBlocked,
+    dispatchCommand,
+    activeState,
+    activeDevice,
+    isCommandPending,
+  } = useDockStore();
   const [abortOpen, setAbortOpen] = useState(false);
   const abortBlocked = whyBlocked("ABORT");
   const moving = activeState.opState === "MOVING";
+  const abortEnabled = canCommand("ABORT") && !isCommandPending;
 
   return (
     <div className={cn("flex flex-col", compact ? "gap-4" : "gap-4")}>
@@ -195,7 +203,7 @@ function ControlPanel({ compact = false }: { compact?: boolean }) {
           <Tooltip>
             <TooltipTrigger
               render={<span className="inline-flex w-full" />}
-              disabled={canCommand("ABORT")}
+              disabled={abortEnabled}
             >
               <DialogTrigger
                 render={
@@ -203,7 +211,7 @@ function ControlPanel({ compact = false }: { compact?: boolean }) {
                     variant="destructive"
                     size="lg"
                     className="w-full"
-                    disabled={!canCommand("ABORT")}
+                    disabled={!abortEnabled}
                   />
                 }
               >
@@ -233,7 +241,7 @@ function ControlPanel({ compact = false }: { compact?: boolean }) {
               <Button
                 variant="destructive"
                 onClick={() => {
-                  dispatchCommand("ABORT");
+                  void dispatchCommand("ABORT");
                   setAbortOpen(false);
                 }}
               >
