@@ -7,7 +7,24 @@ NestJS control plane for the HaytHive dock MVP.
 ```bash
 pnpm --filter @haythive/api dev
 pnpm --filter @haythive/api prisma:migrate
+pnpm --filter @haythive/api prisma:seed
 pnpm --filter @haythive/api prisma:generate
+```
+
+## Auth (demo)
+
+After seeding:
+
+- Email: `operator@haythive.local`
+- Password: `demo`
+
+```bash
+# login (sets httpOnly cookie haythive_session)
+curl -c cookies.txt -H 'Content-Type: application/json' \
+  -d '{"email":"operator@haythive.local","password":"demo"}' \
+  http://localhost:3001/auth/login
+
+curl -b cookies.txt http://localhost:3001/auth/me
 ```
 
 ## Docs
