@@ -27,6 +27,18 @@ curl -c cookies.txt -H 'Content-Type: application/json' \
 curl -b cookies.txt http://localhost:3001/auth/me
 ```
 
+## Device ingest (edge / simulator)
+
+After seeding, dock token defaults to `dev-dock-token`:
+
+```bash
+curl -H 'Content-Type: application/json' -H 'X-Device-Token: dev-dock-token' \
+  -d '{"serial":"HH-DOCK-001","lid":"OPEN","platform":"UP","socPercent":92}' \
+  http://localhost:3001/device/ingest
+```
+
+Stale heartbeats project to `DEGRADED` / `OFFLINE` on `GET /devices/{id}/state` and `/health` device counts (`HEARTBEAT_DEGRADED_MS`, `HEARTBEAT_OFFLINE_MS`).
+
 ## Docs
 
 - Swagger UI: [http://localhost:3001/api/docs](http://localhost:3001/api/docs)

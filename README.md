@@ -4,7 +4,7 @@ Monorepo for the HaytHive dock management POC.
 
 ## Apps
 
-- `apps/web` — Next.js operator dashboard (dummy data for now)
+- `apps/web` — Next.js operator dashboard (Orval → Nest API)
 - `apps/api` — NestJS control plane (Prisma + OpenAPI)
 
 ## Prerequisites
@@ -18,8 +18,9 @@ Monorepo for the HaytHive dock management POC.
 ```bash
 pnpm install
 pnpm db:up
-cp apps/api/.env.example apps/api/.env
+# Create apps/api/.env locally (see apps/api/README.md)
 pnpm db:migrate
+pnpm --filter @haythive/api prisma:seed
 ```
 
 ## Develop
@@ -32,11 +33,18 @@ pnpm --filter @haythive/api prisma:seed
 pnpm dev:api
 
 # Web on http://localhost:3000
+# Optional: NEXT_PUBLIC_API_URL=http://localhost:3001
 pnpm dev:web
 ```
 
-Demo API login: `operator@haythive.local` / `demo`
+Demo login: `operator@haythive.local` / `demo`
 
 - API health: http://localhost:3001/health
 - Swagger: http://localhost:3001/api/docs
-- OpenAPI JSON: http://localhost:3001/api/docs-json
+
+## API client (web)
+
+```bash
+pnpm --filter @haythive/web api:fetch-openapi
+pnpm api:generate
+```

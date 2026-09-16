@@ -6,6 +6,7 @@
     "dev": "pnpm --filter @haythive/web dev",
     "dev:api": "pnpm --filter @haythive/api dev",
     "dev:web": "pnpm --filter @haythive/web dev",
+    "api:generate": "pnpm --filter @haythive/web api:generate",
     "build": "pnpm -r run build",
     "build:api": "pnpm --filter @haythive/api build",
     "build:web": "pnpm --filter @haythive/web build",

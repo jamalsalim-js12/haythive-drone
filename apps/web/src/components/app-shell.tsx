@@ -34,17 +34,17 @@ const nav = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { session, isAuthenticated, signOut } = useSession();
+  const { session, isAuthenticated, isLoading, signOut } = useSession();
   const { devices, activeDeviceId, setActiveDevice } = useDockStore();
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       router.replace("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isLoading, router]);
 
-  if (!isAuthenticated) {
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background text-sm text-muted-foreground">
         Checking session…
@@ -85,10 +85,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <Select
-              value={activeDeviceId}
+              value={activeDeviceId || undefined}
               onValueChange={(value) => {
                 if (typeof value === "string") setActiveDevice(value);
               }}
+              disabled={devices.length === 0}
             >
               <SelectTrigger
                 className="min-w-28 bg-background sm:min-w-40"
@@ -119,8 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               size="sm"
               className="hidden md:inline-flex"
               onClick={() => {
-                signOut();
-                router.replace("/login");
+                void signOut().then(() => router.replace("/login"));
               }}
             >
               Sign out
@@ -181,8 +181,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     className="w-full"
                     onClick={() => {
                       setMenuOpen(false);
-                      signOut();
-                      router.replace("/login");
+                      void signOut().then(() => router.replace("/login"));
                     }}
                   >
                     Sign out

@@ -1,6 +1,11 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import {
+  useGetDevices,
+  useGetDevicesByIdState,
+} from "@/api/generated/endpoints/devices/devices";
+import { getErrorMessage, mapDevice, mapDeviceState } from "@/lib/api-mappers";
 import {
   buildCommandOutcomes,
   buildFaults,
@@ -8,13 +13,12 @@ import {
   buildInitialAudit,
   buildInitialCommands,
   buildSocSeries,
-  devices,
-  initialStates,
 } from "@/lib/dummy/fixtures";
 import type {
   AuditEvent,
   Command,
   CommandType,
+  Device,
   DeviceState,
   FaultEvent,
 } from "@/lib/types";
@@ -22,7 +26,8 @@ import type {
 const MOTION_MS = 1600;
 
 type StoreState = {
-  activeDeviceId: string;
+  activeDeviceId: string | null;
+  devices: Device[];
   states: Record<string, DeviceState>;
   commands: Command[];
   audit: AuditEvent[];
@@ -41,8 +46,12 @@ function cloneState(s: DeviceState): DeviceState {
 }
 
 function recomputeReadiness(state: DeviceState): DeviceState {
+  if (state.readinessChecks.length === 0) {
+    return state;
+  }
+
   const checks = state.readinessChecks.map((c) => {
-    if (c.id === "conn") {
+    if (c.id === "connectivity" || c.id === "conn") {
       const pass = state.connectivity === "ONLINE";
       return {
         ...c,
@@ -60,6 +69,7 @@ function recomputeReadiness(state: DeviceState): DeviceState {
     if (c.id === "charge") {
       const pass =
         state.chargeStatus === "CHARGED" ||
+        state.chargeStatus === "CHARGING" ||
         (state.socPercent >= 95 && state.chargeStatus !== "FAULT");
       return {
         ...c,
@@ -68,12 +78,6 @@ function recomputeReadiness(state: DeviceState): DeviceState {
           ? undefined
           : `SOC ${state.socPercent}% — ${state.chargeStatus.toLowerCase().replaceAll("_", " ")}`,
       };
-    }
-    if (c.id === "lid") {
-      return { ...c, pass: true, detail: undefined };
-    }
-    if (c.id === "platform") {
-      return { ...c, pass: true, detail: undefined };
     }
     return c;
   });
@@ -120,10 +124,9 @@ function interlockReason(state: DeviceState, type: CommandType): string | null {
 
 function createStore() {
   let state: StoreState = {
-    activeDeviceId: devices[0].id,
-    states: Object.fromEntries(
-      Object.entries(initialStates).map(([k, v]) => [k, cloneState(v)]),
-    ),
+    activeDeviceId: null,
+    devices: [],
+    states: {},
     commands: buildInitialCommands(),
     audit: buildInitialAudit(),
     faults: buildFaults(),
@@ -148,22 +151,53 @@ function createStore() {
     return () => listeners.delete(listener);
   }
 
+  function setDevices(devices: Device[]) {
+    const activeStillExists = devices.some(
+      (d) => d.id === state.activeDeviceId,
+    );
+    state = {
+      ...state,
+      devices,
+      activeDeviceId: activeStillExists
+        ? state.activeDeviceId
+        : (devices[0]?.id ?? null),
+    };
+    emit();
+  }
+
+  function hydrateState(deviceState: DeviceState) {
+    if (state.pendingCommandId) return;
+    state = {
+      ...state,
+      states: {
+        ...state.states,
+        [deviceState.deviceId]: cloneState(deviceState),
+      },
+    };
+    emit();
+  }
+
   function setActiveDevice(id: string) {
-    if (!devices.some((d) => d.id === id)) return;
+    if (!state.devices.some((d) => d.id === id)) return;
     state = { ...state, activeDeviceId: id };
     emit();
   }
 
   function getActiveState() {
-    return state.states[state.activeDeviceId];
+    const id = state.activeDeviceId;
+    return id ? state.states[id] : undefined;
   }
 
   function canCommand(type: CommandType) {
-    return interlockReason(getActiveState(), type) === null;
+    const active = getActiveState();
+    if (!active) return false;
+    return interlockReason(active, type) === null;
   }
 
   function whyBlocked(type: CommandType) {
-    return interlockReason(getActiveState(), type);
+    const active = getActiveState();
+    if (!active) return "Dock state unavailable";
+    return interlockReason(active, type);
   }
 
   function finishMotion(
@@ -186,7 +220,6 @@ function createStore() {
       if (type === "PLATFORM_RAISE") next.platform = "UP";
       if (type === "PLATFORM_LOWER") next.platform = "DOWN";
       if (type === "ABORT") {
-        // Leave positions mid-motion as UNKNOWN-ish; keep last non-moving if possible
         if (next.lid === "MOVING") next.lid = "UNKNOWN";
         if (next.platform === "MOVING") next.platform = "UNKNOWN";
       }
@@ -214,7 +247,7 @@ function createStore() {
           id: `aud-${commandId}-done`,
           deviceId,
           action: success ? "command.acked" : "command.failed",
-          actorEmail: "ops@haythive.com",
+          actorEmail: "operator@haythive.local",
           entityType: "command" as const,
           entityId: commandId,
           createdAt: new Date().toISOString(),
@@ -228,7 +261,10 @@ function createStore() {
 
   function dispatchCommand(type: CommandType) {
     const deviceId = state.activeDeviceId;
+    if (!deviceId) return { ok: false as const, reason: "No dock selected" };
     const current = state.states[deviceId];
+    if (!current)
+      return { ok: false as const, reason: "Dock state unavailable" };
     const blocked = interlockReason(current, type);
     if (blocked) return { ok: false as const, reason: blocked };
 
@@ -242,7 +278,7 @@ function createStore() {
       deviceId,
       type,
       status: "SENT",
-      actorEmail: "ops@haythive.com",
+      actorEmail: "operator@haythive.local",
       createdAt: new Date().toISOString(),
     };
 
@@ -265,7 +301,7 @@ function createStore() {
       id: `aud-${commandId}`,
       deviceId,
       action: `command.${type.toLowerCase()}`,
-      actorEmail: "ops@haythive.com",
+      actorEmail: "operator@haythive.local",
       entityType: "command",
       entityId: commandId,
       createdAt: new Date().toISOString(),
@@ -310,6 +346,8 @@ function createStore() {
   return {
     getSnapshot,
     subscribe,
+    setDevices,
+    hydrateState,
     setActiveDevice,
     canCommand,
     whyBlocked,
@@ -317,11 +355,24 @@ function createStore() {
     getSocSeries: (deviceId: string) => buildSocSeries(deviceId),
     getCommandOutcomes: () => buildCommandOutcomes(),
     getHeartbeatSeries: (deviceId: string) => buildHeartbeatSeries(deviceId),
-    getDevices: () => devices,
   };
 }
 
 const store = createStore();
+
+const EMPTY_STATE: DeviceState = {
+  deviceId: "",
+  connectivity: "OFFLINE",
+  opState: "IDLE",
+  lid: "UNKNOWN",
+  platform: "UNKNOWN",
+  chargeStatus: "UNKNOWN",
+  socPercent: 0,
+  readiness: "NOT_READY",
+  readinessChecks: [],
+  lastHeartbeatAt: new Date(0).toISOString(),
+  updatedAt: new Date(0).toISOString(),
+};
 
 export function useDockStore() {
   const snapshot = useSyncExternalStore(
@@ -330,26 +381,72 @@ export function useDockStore() {
     store.getSnapshot,
   );
 
+  const devicesQuery = useGetDevices({
+    query: {
+      refetchInterval: 10_000,
+    },
+  });
+
+  const devices =
+    devicesQuery.data?.status === 200
+      ? devicesQuery.data.data.map(mapDevice)
+      : snapshot.devices;
+
+  useEffect(() => {
+    if (devicesQuery.data?.status === 200) {
+      store.setDevices(devicesQuery.data.data.map(mapDevice));
+    }
+  }, [devicesQuery.data]);
+
+  const activeDeviceId = snapshot.activeDeviceId ?? devices[0]?.id ?? "";
+
+  const stateQuery = useGetDevicesByIdState(activeDeviceId, {
+    query: {
+      enabled: Boolean(activeDeviceId),
+      refetchInterval: snapshot.pendingCommandId ? false : 2_500,
+    },
+  });
+
+  useEffect(() => {
+    if (stateQuery.data?.status === 200) {
+      store.hydrateState(mapDeviceState(stateQuery.data.data));
+    }
+  }, [stateQuery.data]);
+
   const activeDevice =
-    store.getDevices().find((d) => d.id === snapshot.activeDeviceId) ??
-    store.getDevices()[0];
-  const activeState = snapshot.states[snapshot.activeDeviceId];
+    devices.find((d) => d.id === activeDeviceId) ?? devices[0];
+  const activeState =
+    (activeDeviceId ? snapshot.states[activeDeviceId] : undefined) ??
+    EMPTY_STATE;
+
+  const faults: FaultEvent[] = snapshot.faults.filter(
+    (f) => !activeDeviceId || f.deviceId === activeDeviceId,
+  );
 
   return {
-    devices: store.getDevices(),
-    activeDevice,
-    activeDeviceId: snapshot.activeDeviceId,
+    devices,
+    activeDevice: activeDevice ?? {
+      id: "",
+      name: "No dock",
+      serial: "—",
+      siteName: "—",
+    },
+    activeDeviceId,
     activeState,
     commands: snapshot.commands,
     audit: snapshot.audit,
-    faults: snapshot.faults,
+    faults,
     pendingCommandId: snapshot.pendingCommandId,
     setActiveDevice: store.setActiveDevice,
     canCommand: store.canCommand,
     whyBlocked: store.whyBlocked,
     dispatchCommand: store.dispatchCommand,
-    socSeries: store.getSocSeries(snapshot.activeDeviceId),
+    socSeries: store.getSocSeries(activeDeviceId || "unknown"),
     commandOutcomes: store.getCommandOutcomes(),
-    heartbeatSeries: store.getHeartbeatSeries(snapshot.activeDeviceId),
+    heartbeatSeries: store.getHeartbeatSeries(activeDeviceId || "unknown"),
+    isLoading: devicesQuery.isLoading || stateQuery.isLoading,
+    isError: devicesQuery.isError || stateQuery.isError,
+    errorMessage:
+      getErrorMessage(devicesQuery.error) ?? getErrorMessage(stateQuery.error),
   };
 }

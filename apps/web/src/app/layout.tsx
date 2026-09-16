@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { AppProviders } from "@/components/app-providers";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -55,8 +56,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
-        <TooltipProvider delay={200}>{children}</TooltipProvider>
-        <PwaInstallPrompt />
+        <AppProviders>
+          <TooltipProvider delay={200}>{children}</TooltipProvider>
+          <PwaInstallPrompt />
+        </AppProviders>
       </body>
     </html>
   );

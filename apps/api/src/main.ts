@@ -32,6 +32,10 @@ async function bootstrap() {
     .addCookieAuth("haythive_session")
     .addTag("Auth", "Operator authentication and session management.")
     .addTag("Devices", "Dock device registry and live projected state.")
+    .addTag(
+      "Device Ingest",
+      "Edge/simulator heartbeat and dock state ingestion.",
+    )
     .addTag("Health", "Service and dependency health checks.")
     .build();
 
