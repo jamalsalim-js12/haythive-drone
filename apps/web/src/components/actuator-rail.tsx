@@ -163,11 +163,7 @@ function ControlPanel({ compact = false }: { compact?: boolean }) {
           Lid
         </p>
         <div className="grid grid-cols-2 gap-2">
-          <ActuatorButton
-            type="LID_OPEN"
-            label="Open"
-            icon={DoorOpenIcon}
-          />
+          <ActuatorButton type="LID_OPEN" label="Open" icon={DoorOpenIcon} />
           <ActuatorButton
             type="LID_CLOSE"
             label="Close"
@@ -277,7 +273,9 @@ function MobileControlBar({ state }: { state: DeviceState }) {
       </div>
       <Sheet>
         <SheetTrigger
-          render={<Button className="h-11 w-full" size="lg" variant="default" />}
+          render={
+            <Button className="h-11 w-full" size="lg" variant="default" />
+          }
         >
           <SlidersHorizontalIcon data-icon="inline-start" />
           Open control panel
