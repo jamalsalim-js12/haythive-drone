@@ -241,6 +241,48 @@
         "tags": ["Actuators"]
       }
     },
+    "/actuators/commands/{id}/abort": {
+      "post": {
+        "description": "Stops an active (PENDING/SENT) lid or platform command, notifies the edge adapter, marks the original command FAILED, records an ACKED ABORT command, and sets moving axes to UNKNOWN.",
+        "operationId": "postActuatorsCommandsByIdAbort",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbortActuatorCommandDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CommandResponseDto" }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid session." },
+          "404": { "description": "Command not found." },
+          "409": {
+            "description": "Command is not active or dock is not moving."
+          }
+        },
+        "security": [{ "cookie": [] }],
+        "summary": "Abort an in-progress actuator command",
+        "tags": ["Actuators"]
+      }
+    },
     "/health": {
       "get": {
         "description": "Returns process health and whether the database connection is reachable.",
@@ -582,6 +624,17 @@
           "createdAt",
           "updatedAt"
         ]
+      },
+      "AbortActuatorCommandDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Optional human-readable reason for the abort.",
+            "example": "Operator halted motion",
+            "maxLength": 500
+          }
+        }
       },
       "DeviceConnectivitySummaryDto": {
         "type": "object",

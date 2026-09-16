@@ -2,7 +2,10 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useSyncExternalStore } from "react";
-import { usePostActuatorsCommands } from "@/api/generated/endpoints/actuators/actuators";
+import {
+  usePostActuatorsCommands,
+  usePostActuatorsCommandsByIdAbort,
+} from "@/api/generated/endpoints/actuators/actuators";
 import {
   getGetDevicesByIdStateQueryKey,
   useGetDevices,
@@ -290,53 +293,50 @@ function createStore() {
     emit();
   }
 
-  /** Local-only until KON-41 ships abort on the API. */
-  function dispatchAbortLocal(actorEmail: string): DispatchResult {
-    const deviceId = state.activeDeviceId;
-    if (!deviceId) return { ok: false, reason: "No dock selected" };
+  function applyAbort(abortCommand: Command, abortedCommandId: string) {
+    const deviceId = abortCommand.deviceId;
     const current = state.states[deviceId];
-    if (!current) return { ok: false, reason: "Dock state unavailable" };
-    const blocked = interlockReason(current, "ABORT");
-    if (blocked) return { ok: false, reason: blocked };
-
-    const commandId = `cmd-abort-${Date.now()}`;
-    let next = cloneState(current);
-    next.opState = "IDLE";
-    next.updatedAt = new Date().toISOString();
-    if (next.lid === "MOVING") next.lid = "UNKNOWN";
-    if (next.platform === "MOVING") next.platform = "UNKNOWN";
-    next = recomputeReadiness(next);
-
-    const command: Command = {
-      id: commandId,
-      deviceId,
-      type: "ABORT",
-      status: "ACKED",
-      actorEmail,
-      createdAt: new Date().toISOString(),
-      completedAt: new Date().toISOString(),
-    };
+    let next = current ? cloneState(current) : null;
+    if (next) {
+      next.opState = "IDLE";
+      next.updatedAt = new Date().toISOString();
+      if (next.lid === "MOVING") next.lid = "UNKNOWN";
+      if (next.platform === "MOVING") next.platform = "UNKNOWN";
+      next = recomputeReadiness(next);
+    }
 
     state = {
       ...state,
       pendingCommandId: null,
-      states: { ...state.states, [deviceId]: next },
-      commands: [command, ...state.commands],
+      states: next ? { ...state.states, [deviceId]: next } : state.states,
+      commands: [
+        abortCommand,
+        ...state.commands.map((c) =>
+          c.id === abortedCommandId
+            ? {
+                ...c,
+                status: "FAILED" as const,
+                completedAt: new Date().toISOString(),
+                message: abortCommand.message,
+              }
+            : c,
+        ),
+      ],
       audit: [
         {
-          id: `aud-${commandId}`,
+          id: `aud-${abortCommand.id}`,
           deviceId,
-          action: "command.abort",
-          actorEmail,
-          entityType: "command",
-          entityId: commandId,
+          action: "command.aborted",
+          actorEmail: abortCommand.actorEmail,
+          entityType: "command" as const,
+          entityId: abortedCommandId,
           createdAt: new Date().toISOString(),
+          meta: { abortCommandId: abortCommand.id },
         },
         ...state.audit,
       ],
     };
     emit();
-    return { ok: true, commandId };
   }
 
   return {
@@ -348,8 +348,11 @@ function createStore() {
     canCommand,
     whyBlocked,
     applySentCommand,
-    dispatchAbortLocal,
+    applyAbort,
     getActiveDeviceId: () => state.activeDeviceId,
+    getPendingCommandId: () => state.pendingCommandId,
+    getLatestSentCommandId: () =>
+      state.commands.find((c) => c.status === "SENT")?.id ?? null,
     getSocSeries: (deviceId: string) => buildSocSeries(deviceId),
     getCommandOutcomes: () => buildCommandOutcomes(),
     getHeartbeatSeries: (deviceId: string) => buildHeartbeatSeries(deviceId),
@@ -377,6 +380,7 @@ export function useDockStore() {
   const { session } = useSession();
   const actorEmail = session?.email ?? "operator@haythive.local";
   const commandMutation = usePostActuatorsCommands();
+  const abortMutation = usePostActuatorsCommandsByIdAbort();
 
   const snapshot = useSyncExternalStore(
     store.subscribe,
@@ -419,7 +423,42 @@ export function useDockStore() {
 
   async function dispatchCommand(type: CommandType): Promise<DispatchResult> {
     if (type === "ABORT") {
-      return store.dispatchAbortLocal(actorEmail);
+      const blocked = store.whyBlocked("ABORT");
+      if (blocked) return { ok: false, reason: blocked };
+
+      const abortedCommandId =
+        store.getPendingCommandId() ?? store.getLatestSentCommandId();
+      if (!abortedCommandId) {
+        return { ok: false, reason: "No active command to abort" };
+      }
+
+      const deviceId = store.getActiveDeviceId() ?? activeDeviceId;
+      try {
+        const response = await abortMutation.mutateAsync({
+          id: abortedCommandId,
+          data: { reason: "Operator aborted motion" },
+        });
+
+        if (response.status !== 200) {
+          return { ok: false, reason: "Abort was rejected" };
+        }
+
+        store.applyAbort(
+          mapCommand(response.data, actorEmail),
+          abortedCommandId,
+        );
+        if (deviceId) {
+          await queryClient.invalidateQueries({
+            queryKey: getGetDevicesByIdStateQueryKey(deviceId),
+          });
+        }
+        return { ok: true, commandId: response.data.id };
+      } catch (error: unknown) {
+        return {
+          ok: false,
+          reason: getErrorMessage(error) ?? "Abort failed",
+        };
+      }
     }
 
     if (!API_COMMAND_TYPES.has(type)) {
@@ -485,8 +524,8 @@ export function useDockStore() {
     audit: snapshot.audit,
     faults,
     pendingCommandId: snapshot.pendingCommandId,
-    isCommandPending:
-      commandMutation.isPending || Boolean(snapshot.pendingCommandId),
+    isCommandPending: commandMutation.isPending || abortMutation.isPending,
+    isAbortPending: abortMutation.isPending,
     setActiveDevice: store.setActiveDevice,
     canCommand: store.canCommand,
     whyBlocked: store.whyBlocked,

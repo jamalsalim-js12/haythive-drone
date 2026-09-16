@@ -2,7 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { CommandType } from "@prisma/client";
 import { IsEnum, IsString, MinLength } from "class-validator";
 
-/** MVP actuator command types for POST /actuators/commands (ABORT is KON-41). */
+/** MVP actuator command types for POST /actuators/commands. */
 export const ActuatorCommandType = {
   LID_OPEN: CommandType.LID_OPEN,
   LID_CLOSE: CommandType.LID_CLOSE,

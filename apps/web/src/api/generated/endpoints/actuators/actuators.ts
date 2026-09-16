@@ -16,6 +16,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AbortActuatorCommandDto,
   CommandResponseDto,
   CreateActuatorCommandDto
 } from '../../models';
@@ -144,4 +145,122 @@ export const usePostActuatorsCommands = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getPostActuatorsCommandsMutationOptions(options), queryClient);
+    }
+    export type postActuatorsCommandsByIdAbortResponse200 = {
+  data: CommandResponseDto
+  status: 200
+}
+
+export type postActuatorsCommandsByIdAbortResponse401 = {
+  data: void
+  status: 401
+}
+
+export type postActuatorsCommandsByIdAbortResponse404 = {
+  data: void
+  status: 404
+}
+
+export type postActuatorsCommandsByIdAbortResponse409 = {
+  data: void
+  status: 409
+}
+
+export type postActuatorsCommandsByIdAbortResponseSuccess = (postActuatorsCommandsByIdAbortResponse200) & {
+  headers: Headers;
+};
+export type postActuatorsCommandsByIdAbortResponseError = (postActuatorsCommandsByIdAbortResponse401 | postActuatorsCommandsByIdAbortResponse404 | postActuatorsCommandsByIdAbortResponse409) & {
+  headers: Headers;
+};
+
+export type postActuatorsCommandsByIdAbortResponse = (postActuatorsCommandsByIdAbortResponseSuccess | postActuatorsCommandsByIdAbortResponseError)
+
+export const getPostActuatorsCommandsByIdAbortUrl = (id: string,) => {
+
+
+
+
+  return `/actuators/commands/${id}/abort`
+}
+
+/**
+ * Stops an active (PENDING/SENT) lid or platform command, notifies the edge adapter, marks the original command FAILED, records an ACKED ABORT command, and sets moving axes to UNKNOWN.
+ * @summary Abort an in-progress actuator command
+ */
+export const postActuatorsCommandsByIdAbort = async (id: string,
+    abortActuatorCommandDto: AbortActuatorCommandDto, options?: Parameters<typeof customFetch>[1]): Promise<postActuatorsCommandsByIdAbortResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<postActuatorsCommandsByIdAbortResponse>(getPostActuatorsCommandsByIdAbortUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(abortActuatorCommandDto)
+  }
+);}
+
+
+
+
+
+export const getPostActuatorsCommandsByIdAbortMutationKey = () => ['postActuatorsCommandsByIdAbort'] as const;
+
+export const getPostActuatorsCommandsByIdAbortMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postActuatorsCommandsByIdAbort>>, TError,PostActuatorsCommandsByIdAbortMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postActuatorsCommandsByIdAbort>>, TError,PostActuatorsCommandsByIdAbortMutationVariables, TContext> => {
+
+const mutationKey = getPostActuatorsCommandsByIdAbortMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postActuatorsCommandsByIdAbort>>, PostActuatorsCommandsByIdAbortMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  postActuatorsCommandsByIdAbort(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostActuatorsCommandsByIdAbortMutationResult = NonNullable<Awaited<ReturnType<typeof postActuatorsCommandsByIdAbort>>>
+    export type PostActuatorsCommandsByIdAbortMutationBody = AbortActuatorCommandDto
+    export type PostActuatorsCommandsByIdAbortMutationError = ErrorType<void>
+    export type PostActuatorsCommandsByIdAbortMutationVariables = {id: string;data: AbortActuatorCommandDto}
+
+    /**
+ * @summary Abort an in-progress actuator command
+ */
+export const usePostActuatorsCommandsByIdAbort = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postActuatorsCommandsByIdAbort>>, TError,PostActuatorsCommandsByIdAbortMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postActuatorsCommandsByIdAbort>>,
+        TError,
+        PostActuatorsCommandsByIdAbortMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostActuatorsCommandsByIdAbortMutationOptions(options), queryClient);
     }
