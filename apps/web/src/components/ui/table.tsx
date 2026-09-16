@@ -7,11 +7,11 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full max-md:overflow-x-visible md:overflow-x-auto"
+      className="relative w-full overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn("w-full min-w-max caption-bottom text-sm", className)}
         {...props}
       />
     </div>

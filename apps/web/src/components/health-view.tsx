@@ -180,7 +180,7 @@ export function HealthView() {
                       {row.severity}
                     </Badge>
                   </TableCell>
-                  <TableCell className="max-w-[10rem] whitespace-normal text-sm sm:max-w-md">
+                  <TableCell className="max-w-[14rem] whitespace-normal text-sm sm:max-w-md">
                     {row.message}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">

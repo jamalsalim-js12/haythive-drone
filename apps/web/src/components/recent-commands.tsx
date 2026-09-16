@@ -48,7 +48,7 @@ export function RecentCommands({
           View all logs
         </Link>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-none touch-pan-y">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-none">
         <Table>
           <TableHeader>
             <TableRow>
