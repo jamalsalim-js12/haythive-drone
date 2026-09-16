@@ -41,6 +41,9 @@ async function main() {
   });
 
   const serial = process.env.SEED_DOCK_SERIAL ?? "HH-DOCK-001";
+  const ingestToken = process.env.SEED_DOCK_INGEST_TOKEN ?? "dev-dock-token";
+  const ingestTokenHash = await bcrypt.hash(ingestToken, 10);
+
   const readinessReasons = [
     {
       id: "connectivity",
@@ -65,12 +68,14 @@ async function main() {
     update: {
       name: "Lab Dock 1",
       siteId: site.id,
+      ingestTokenHash,
       lastHeartbeatAt: new Date(),
     },
     create: {
       name: "Lab Dock 1",
       serial,
       siteId: site.id,
+      ingestTokenHash,
       lastHeartbeatAt: new Date(),
     },
   });
@@ -102,6 +107,7 @@ async function main() {
 
   console.log(`Seeded operator ${email} (password: ${password})`);
   console.log(`Seeded dock ${serial} (${device.id}) at site ${site.name}`);
+  console.log(`Dock ingest token: ${ingestToken}`);
 }
 
 main()

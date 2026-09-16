@@ -7,20 +7,9 @@ import {
   PlatformState,
   Readiness,
 } from "@prisma/client";
+import { ReadinessReasonDto } from "../../common/dto/readiness-reason.dto";
 
-export class ReadinessReasonDto {
-  @ApiProperty({ example: "charge" })
-  id!: string;
-
-  @ApiProperty({ example: "Battery charging healthy" })
-  label!: string;
-
-  @ApiProperty({ example: true })
-  pass!: boolean;
-
-  @ApiPropertyOptional({ example: "SOC 86%" })
-  detail?: string;
-}
+export { ReadinessReasonDto };
 
 export class DeviceStateResponseDto {
   @ApiProperty({ example: "clxdevice001" })
