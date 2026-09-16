@@ -26,11 +26,16 @@ pnpm db:migrate
 
 ```bash
 # API on http://localhost:3001
+pnpm db:up
+pnpm db:migrate
+pnpm --filter @haythive/api prisma:seed
 pnpm dev:api
 
 # Web on http://localhost:3000
 pnpm dev:web
 ```
+
+Demo API login: `operator@haythive.local` / `demo`
 
 - API health: http://localhost:3001/health
 - Swagger: http://localhost:3001/api/docs
