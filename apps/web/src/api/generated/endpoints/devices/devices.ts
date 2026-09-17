@@ -21,6 +21,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  DeviceAuditEventResponseDto,
+  DeviceCommandResponseDto,
+  DeviceFaultResponseDto,
   DeviceResponseDto,
   DeviceStateResponseDto
 } from '../../models';
@@ -282,6 +285,381 @@ export function useGetDevicesByIdState<TData = Awaited<ReturnType<typeof getDevi
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetDevicesByIdStateQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type getDevicesByIdCommandsResponse200 = {
+  data: DeviceCommandResponseDto[]
+  status: 200
+}
+
+export type getDevicesByIdCommandsResponse401 = {
+  data: void
+  status: 401
+}
+
+export type getDevicesByIdCommandsResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getDevicesByIdCommandsResponseSuccess = (getDevicesByIdCommandsResponse200) & {
+  headers: Headers;
+};
+export type getDevicesByIdCommandsResponseError = (getDevicesByIdCommandsResponse401 | getDevicesByIdCommandsResponse404) & {
+  headers: Headers;
+};
+
+export type getDevicesByIdCommandsResponse = (getDevicesByIdCommandsResponseSuccess | getDevicesByIdCommandsResponseError)
+
+export const getGetDevicesByIdCommandsUrl = (id: string,) => {
+
+
+
+
+  return `/devices/${id}/commands`
+}
+
+/**
+ * Returns recent actuator commands for a dock, newest first, for the operator logs view.
+ * @summary List dock commands
+ */
+export const getDevicesByIdCommands = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<getDevicesByIdCommandsResponse> => {
+
+  return customFetch<getDevicesByIdCommandsResponse>(getGetDevicesByIdCommandsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDevicesByIdCommandsQueryKey = (id: string,) => {
+    return [
+    `/devices/${id}/commands`
+    ] as const;
+    }
+
+
+export const getGetDevicesByIdCommandsQueryOptions = <TData = Awaited<ReturnType<typeof getDevicesByIdCommands>>, TError = ErrorType<void>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdCommands>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDevicesByIdCommandsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDevicesByIdCommands>>> = ({ signal }) => getDevicesByIdCommands(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdCommands>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetDevicesByIdCommandsQueryResult = NonNullable<Awaited<ReturnType<typeof getDevicesByIdCommands>>>
+export type GetDevicesByIdCommandsQueryError = ErrorType<void>
+
+
+export function useGetDevicesByIdCommands<TData = Awaited<ReturnType<typeof getDevicesByIdCommands>>, TError = ErrorType<void>>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdCommands>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDevicesByIdCommands>>,
+          TError,
+          Awaited<ReturnType<typeof getDevicesByIdCommands>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetDevicesByIdCommands<TData = Awaited<ReturnType<typeof getDevicesByIdCommands>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdCommands>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDevicesByIdCommands>>,
+          TError,
+          Awaited<ReturnType<typeof getDevicesByIdCommands>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetDevicesByIdCommands<TData = Awaited<ReturnType<typeof getDevicesByIdCommands>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdCommands>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List dock commands
+ */
+
+export function useGetDevicesByIdCommands<TData = Awaited<ReturnType<typeof getDevicesByIdCommands>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdCommands>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetDevicesByIdCommandsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type getDevicesByIdAuditResponse200 = {
+  data: DeviceAuditEventResponseDto[]
+  status: 200
+}
+
+export type getDevicesByIdAuditResponse401 = {
+  data: void
+  status: 401
+}
+
+export type getDevicesByIdAuditResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getDevicesByIdAuditResponseSuccess = (getDevicesByIdAuditResponse200) & {
+  headers: Headers;
+};
+export type getDevicesByIdAuditResponseError = (getDevicesByIdAuditResponse401 | getDevicesByIdAuditResponse404) & {
+  headers: Headers;
+};
+
+export type getDevicesByIdAuditResponse = (getDevicesByIdAuditResponseSuccess | getDevicesByIdAuditResponseError)
+
+export const getGetDevicesByIdAuditUrl = (id: string,) => {
+
+
+
+
+  return `/devices/${id}/audit`
+}
+
+/**
+ * Returns recent audit trail rows for a dock, newest first, for the operator logs view.
+ * @summary List dock audit events
+ */
+export const getDevicesByIdAudit = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<getDevicesByIdAuditResponse> => {
+
+  return customFetch<getDevicesByIdAuditResponse>(getGetDevicesByIdAuditUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDevicesByIdAuditQueryKey = (id: string,) => {
+    return [
+    `/devices/${id}/audit`
+    ] as const;
+    }
+
+
+export const getGetDevicesByIdAuditQueryOptions = <TData = Awaited<ReturnType<typeof getDevicesByIdAudit>>, TError = ErrorType<void>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdAudit>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDevicesByIdAuditQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDevicesByIdAudit>>> = ({ signal }) => getDevicesByIdAudit(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdAudit>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetDevicesByIdAuditQueryResult = NonNullable<Awaited<ReturnType<typeof getDevicesByIdAudit>>>
+export type GetDevicesByIdAuditQueryError = ErrorType<void>
+
+
+export function useGetDevicesByIdAudit<TData = Awaited<ReturnType<typeof getDevicesByIdAudit>>, TError = ErrorType<void>>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdAudit>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDevicesByIdAudit>>,
+          TError,
+          Awaited<ReturnType<typeof getDevicesByIdAudit>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetDevicesByIdAudit<TData = Awaited<ReturnType<typeof getDevicesByIdAudit>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdAudit>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDevicesByIdAudit>>,
+          TError,
+          Awaited<ReturnType<typeof getDevicesByIdAudit>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetDevicesByIdAudit<TData = Awaited<ReturnType<typeof getDevicesByIdAudit>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdAudit>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List dock audit events
+ */
+
+export function useGetDevicesByIdAudit<TData = Awaited<ReturnType<typeof getDevicesByIdAudit>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdAudit>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetDevicesByIdAuditQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type getDevicesByIdFaultsResponse200 = {
+  data: DeviceFaultResponseDto[]
+  status: 200
+}
+
+export type getDevicesByIdFaultsResponse401 = {
+  data: void
+  status: 401
+}
+
+export type getDevicesByIdFaultsResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getDevicesByIdFaultsResponseSuccess = (getDevicesByIdFaultsResponse200) & {
+  headers: Headers;
+};
+export type getDevicesByIdFaultsResponseError = (getDevicesByIdFaultsResponse401 | getDevicesByIdFaultsResponse404) & {
+  headers: Headers;
+};
+
+export type getDevicesByIdFaultsResponse = (getDevicesByIdFaultsResponseSuccess | getDevicesByIdFaultsResponseError)
+
+export const getGetDevicesByIdFaultsUrl = (id: string,) => {
+
+
+
+
+  return `/devices/${id}/faults`
+}
+
+/**
+ * Returns fault log entries for a dock, newest first, for the health view.
+ * @summary List dock faults
+ */
+export const getDevicesByIdFaults = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<getDevicesByIdFaultsResponse> => {
+
+  return customFetch<getDevicesByIdFaultsResponse>(getGetDevicesByIdFaultsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDevicesByIdFaultsQueryKey = (id: string,) => {
+    return [
+    `/devices/${id}/faults`
+    ] as const;
+    }
+
+
+export const getGetDevicesByIdFaultsQueryOptions = <TData = Awaited<ReturnType<typeof getDevicesByIdFaults>>, TError = ErrorType<void>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdFaults>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDevicesByIdFaultsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDevicesByIdFaults>>> = ({ signal }) => getDevicesByIdFaults(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdFaults>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetDevicesByIdFaultsQueryResult = NonNullable<Awaited<ReturnType<typeof getDevicesByIdFaults>>>
+export type GetDevicesByIdFaultsQueryError = ErrorType<void>
+
+
+export function useGetDevicesByIdFaults<TData = Awaited<ReturnType<typeof getDevicesByIdFaults>>, TError = ErrorType<void>>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdFaults>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDevicesByIdFaults>>,
+          TError,
+          Awaited<ReturnType<typeof getDevicesByIdFaults>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetDevicesByIdFaults<TData = Awaited<ReturnType<typeof getDevicesByIdFaults>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdFaults>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getDevicesByIdFaults>>,
+          TError,
+          Awaited<ReturnType<typeof getDevicesByIdFaults>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetDevicesByIdFaults<TData = Awaited<ReturnType<typeof getDevicesByIdFaults>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdFaults>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List dock faults
+ */
+
+export function useGetDevicesByIdFaults<TData = Awaited<ReturnType<typeof getDevicesByIdFaults>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getDevicesByIdFaults>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetDevicesByIdFaultsQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
