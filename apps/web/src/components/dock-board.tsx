@@ -2,6 +2,7 @@
 
 import { ActuatorRail } from "@/components/actuator-rail";
 import { ChargeReadiness } from "@/components/charge-readiness";
+import { DockBoardSkeleton } from "@/components/dock-board-skeleton";
 import { InstrumentStrip } from "@/components/instrument-strip";
 import { CommandOutcomesChart, SocTrendChart } from "@/components/ops-charts";
 import { RecentCommands } from "@/components/recent-commands";
@@ -16,6 +17,7 @@ export function DockBoard() {
     socSeries,
     commandOutcomes,
     isLoading,
+    isSwitchingDock,
     isError,
     errorMessage,
   } = useDockStore();
@@ -24,12 +26,8 @@ export function DockBoard() {
     activeState.connectivity === "DEGRADED" ||
     activeState.connectivity === "OFFLINE";
 
-  if (isLoading && !activeDevice.id) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        Loading dock…
-      </div>
-    );
+  if ((isLoading && !activeDevice.id) || isSwitchingDock) {
+    return <DockBoardSkeleton />;
   }
 
   if (isError) {

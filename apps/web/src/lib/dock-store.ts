@@ -35,6 +35,13 @@ import type {
   FaultEvent,
 } from "@/lib/types";
 
+function isAbortError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const name = "name" in error ? String(error.name) : "";
+  const message = "message" in error ? String(error.message) : "";
+  return name === "AbortError" || /aborted/i.test(message);
+}
+
 type StoreState = {
   activeDeviceId: string | null;
   devices: Device[];
@@ -424,6 +431,13 @@ export function useDockStore() {
       enabled: Boolean(activeDeviceId),
       // Keep polling during motion so stub edge ACKs hydrate the UI.
       refetchInterval: 1_500,
+      // Avoid flashing a hard error while the previous dock's in-flight
+      // poll is aborted on switch.
+      placeholderData: (previous) => previous,
+      retry: (failureCount, error) => {
+        if (isAbortError(error)) return false;
+        return failureCount < 2;
+      },
     },
   });
 
@@ -522,6 +536,22 @@ export function useDockStore() {
     (f) => !activeDeviceId || f.deviceId === activeDeviceId,
   );
 
+  const stateDeviceId =
+    stateQuery.data?.status === 200
+      ? stateQuery.data.data.deviceId
+      : undefined;
+  const isSwitchingDock =
+    Boolean(activeDeviceId) &&
+    (stateQuery.isPending || stateQuery.isFetching) &&
+    stateDeviceId !== activeDeviceId;
+
+  const devicesFailed =
+    devicesQuery.isError && !isAbortError(devicesQuery.error);
+  const stateFailed =
+    stateQuery.isError &&
+    !isAbortError(stateQuery.error) &&
+    !isSwitchingDock;
+
   return {
     devices,
     activeDevice: activeDevice ?? {
@@ -546,7 +576,8 @@ export function useDockStore() {
     commandOutcomes: store.getCommandOutcomes(),
     heartbeatSeries: store.getHeartbeatSeries(activeDeviceId || "unknown"),
     isLoading: devicesQuery.isLoading || stateQuery.isLoading,
-    isError: devicesQuery.isError || stateQuery.isError,
+    isSwitchingDock,
+    isError: devicesFailed || stateFailed,
     errorMessage:
       getErrorMessage(devicesQuery.error) ?? getErrorMessage(stateQuery.error),
   };
