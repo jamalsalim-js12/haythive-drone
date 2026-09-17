@@ -1,7 +1,11 @@
 import type { CommandResponseDto } from "@/api/generated/models/commandResponseDto";
+import type { DeviceAuditEventResponseDto } from "@/api/generated/models/deviceAuditEventResponseDto";
+import type { DeviceCommandResponseDto } from "@/api/generated/models/deviceCommandResponseDto";
+import type { DeviceFaultResponseDto } from "@/api/generated/models/deviceFaultResponseDto";
 import type { DeviceResponseDto } from "@/api/generated/models/deviceResponseDto";
 import type { DeviceStateResponseDto } from "@/api/generated/models/deviceStateResponseDto";
 import type {
+  AuditEvent,
   ChargeStatus,
   Command,
   CommandStatus,
@@ -9,6 +13,7 @@ import type {
   Connectivity,
   Device,
   DeviceState,
+  FaultEvent,
   LidState,
   OpState,
   PlatformState,
@@ -71,6 +76,58 @@ export function mapCommand(
     createdAt: dto.createdAt,
     completedAt: asString(dto.completedAt) || undefined,
     message: asString(dto.message) || undefined,
+  };
+}
+
+export function mapDeviceCommand(dto: DeviceCommandResponseDto): Command {
+  return {
+    id: dto.id,
+    deviceId: dto.deviceId,
+    type: dto.type as CommandType,
+    status: dto.status as CommandStatus,
+    actorEmail: asString(dto.actorEmail, "system"),
+    createdAt: dto.createdAt,
+    completedAt: asString(dto.completedAt) || undefined,
+    message: asString(dto.message) || undefined,
+  };
+}
+
+export function mapDeviceAudit(dto: DeviceAuditEventResponseDto): AuditEvent {
+  const raw = String(dto.entityType ?? "command").toLowerCase();
+  const entityType = (
+    ["command", "state", "health", "auth"].includes(raw) ? raw : "command"
+  ) as AuditEvent["entityType"];
+
+  return {
+    id: dto.id,
+    deviceId: asString(dto.deviceId),
+    action: dto.action,
+    actorEmail:
+      typeof dto.actorEmail === "string" ? dto.actorEmail : null,
+    entityType,
+    entityId: dto.entityId,
+    createdAt: dto.createdAt,
+    meta:
+      dto.meta && typeof dto.meta === "object"
+        ? Object.fromEntries(
+            Object.entries(dto.meta).map(([key, value]) => [
+              key,
+              String(value),
+            ]),
+          )
+        : undefined,
+  };
+}
+
+export function mapDeviceFault(dto: DeviceFaultResponseDto): FaultEvent {
+  return {
+    id: dto.id,
+    deviceId: dto.deviceId,
+    code: dto.code,
+    severity: dto.severity === "CRITICAL" ? "critical" : "warning",
+    message: dto.message,
+    resolved: dto.resolved,
+    createdAt: dto.createdAt,
   };
 }
 

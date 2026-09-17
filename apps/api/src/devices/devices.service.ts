@@ -1,6 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { HeartbeatMonitorService } from "../device-ingest/heartbeat-monitor.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { DeviceAuditEventResponseDto } from "./dto/device-audit-event-response.dto";
+import { DeviceCommandResponseDto } from "./dto/device-command-response.dto";
+import { DeviceFaultResponseDto } from "./dto/device-fault-response.dto";
 import { DeviceResponseDto } from "./dto/device-response.dto";
 import {
   DeviceStateResponseDto,
@@ -49,6 +52,88 @@ export class DevicesService {
       device.lastHeartbeatAt,
       device.state,
     );
+  }
+
+  async assertDeviceExists(deviceId: string): Promise<void> {
+    const device = await this.prisma.device.findUnique({
+      where: { id: deviceId },
+      select: { id: true },
+    });
+    if (!device) {
+      throw new NotFoundException(`Device ${deviceId} not found.`);
+    }
+  }
+
+  async findCommandsByDeviceId(
+    deviceId: string,
+  ): Promise<DeviceCommandResponseDto[]> {
+    await this.assertDeviceExists(deviceId);
+    const commands = await this.prisma.command.findMany({
+      where: { deviceId },
+      include: { actor: { select: { email: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+
+    return commands.map((command) => ({
+      id: command.id,
+      deviceId: command.deviceId,
+      type: command.type,
+      status: command.status,
+      actorEmail: command.actor?.email ?? null,
+      message: command.message,
+      createdAt: command.createdAt.toISOString(),
+      completedAt: command.completedAt?.toISOString() ?? null,
+    }));
+  }
+
+  async findAuditByDeviceId(
+    deviceId: string,
+  ): Promise<DeviceAuditEventResponseDto[]> {
+    await this.assertDeviceExists(deviceId);
+    const events = await this.prisma.auditEvent.findMany({
+      where: { deviceId },
+      include: { actor: { select: { email: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+
+    return events.map((event) => ({
+      id: event.id,
+      deviceId: event.deviceId,
+      action: event.action,
+      entityType: event.entityType,
+      entityId: event.entityId,
+      actorEmail: event.actor?.email ?? null,
+      meta:
+        event.meta &&
+        typeof event.meta === "object" &&
+        !Array.isArray(event.meta)
+          ? (event.meta as Record<string, unknown>)
+          : null,
+      createdAt: event.createdAt.toISOString(),
+    }));
+  }
+
+  async findFaultsByDeviceId(
+    deviceId: string,
+  ): Promise<DeviceFaultResponseDto[]> {
+    await this.assertDeviceExists(deviceId);
+    const faults = await this.prisma.fault.findMany({
+      where: { deviceId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+
+    return faults.map((fault) => ({
+      id: fault.id,
+      deviceId: fault.deviceId,
+      code: fault.code,
+      severity: fault.severity,
+      message: fault.message,
+      resolved: fault.resolved,
+      createdAt: fault.createdAt.toISOString(),
+    }));
   }
 
   private toDeviceResponse(device: {

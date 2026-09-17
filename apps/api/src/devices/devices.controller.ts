@@ -15,6 +15,9 @@ import {
 } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { DevicesService } from "./devices.service";
+import { DeviceAuditEventResponseDto } from "./dto/device-audit-event-response.dto";
+import { DeviceCommandResponseDto } from "./dto/device-command-response.dto";
+import { DeviceFaultResponseDto } from "./dto/device-fault-response.dto";
 import { DeviceResponseDto } from "./dto/device-response.dto";
 import { DeviceStateResponseDto } from "./dto/device-state-response.dto";
 
@@ -56,6 +59,54 @@ export class DevicesController {
       throw new NotFoundException(`State for device ${id} not found.`);
     }
     return state;
+  }
+
+  @Get(":id/commands")
+  @ApiOperation({
+    operationId: "getDevicesByIdCommands",
+    summary: "List dock commands",
+    description:
+      "Returns recent actuator commands for a dock, newest first, for the operator logs view.",
+  })
+  @ApiOkResponse({ type: DeviceCommandResponseDto, isArray: true })
+  @ApiNotFoundResponse({ description: "Device not found." })
+  @ApiUnauthorizedResponse({ description: "Missing or invalid session." })
+  getDevicesByIdCommands(
+    @Param("id") id: string,
+  ): Promise<DeviceCommandResponseDto[]> {
+    return this.devicesService.findCommandsByDeviceId(id);
+  }
+
+  @Get(":id/audit")
+  @ApiOperation({
+    operationId: "getDevicesByIdAudit",
+    summary: "List dock audit events",
+    description:
+      "Returns recent audit trail rows for a dock, newest first, for the operator logs view.",
+  })
+  @ApiOkResponse({ type: DeviceAuditEventResponseDto, isArray: true })
+  @ApiNotFoundResponse({ description: "Device not found." })
+  @ApiUnauthorizedResponse({ description: "Missing or invalid session." })
+  getDevicesByIdAudit(
+    @Param("id") id: string,
+  ): Promise<DeviceAuditEventResponseDto[]> {
+    return this.devicesService.findAuditByDeviceId(id);
+  }
+
+  @Get(":id/faults")
+  @ApiOperation({
+    operationId: "getDevicesByIdFaults",
+    summary: "List dock faults",
+    description:
+      "Returns fault log entries for a dock, newest first, for the health view.",
+  })
+  @ApiOkResponse({ type: DeviceFaultResponseDto, isArray: true })
+  @ApiNotFoundResponse({ description: "Device not found." })
+  @ApiUnauthorizedResponse({ description: "Missing or invalid session." })
+  getDevicesByIdFaults(
+    @Param("id") id: string,
+  ): Promise<DeviceFaultResponseDto[]> {
+    return this.devicesService.findFaultsByDeviceId(id);
   }
 
   @Get(":id")
