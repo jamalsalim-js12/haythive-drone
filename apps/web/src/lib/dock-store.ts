@@ -112,11 +112,23 @@ function interlockReason(state: DeviceState, type: CommandType): string | null {
   if (state.opState === "FAULT" && type !== "ABORT") {
     return "Dock is in fault — clear before commanding";
   }
-  if (state.opState === "MOVING" && type !== "ABORT") {
+  if (state.opState === "SERVICE" && type !== "ABORT") {
+    return "Dock is in service mode — commands are disabled";
+  }
+  if (
+    (state.opState === "MOVING" ||
+      state.lid === "MOVING" ||
+      state.platform === "MOVING") &&
+    type !== "ABORT"
+  ) {
     return "Motion in progress — abort or wait";
   }
   if (type === "ABORT") {
-    return state.opState === "MOVING" ? null : "Nothing to abort";
+    return state.opState === "MOVING" ||
+      state.lid === "MOVING" ||
+      state.platform === "MOVING"
+      ? null
+      : "Nothing to abort";
   }
   if (type === "LID_CLOSE" && state.platform !== "DOWN") {
     return "Close lid only when platform is down";
