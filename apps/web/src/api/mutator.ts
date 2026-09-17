@@ -1,6 +1,16 @@
+/**
+ * Browser calls go to same-origin `/backend/*`, which Next rewrites to the Nest API.
+ * That keeps the session cookie first-party so mobile Safari does not drop it.
+ *
+ * Local absolute `http://localhost:3001` still works for direct API access in dev.
+ */
+const configured = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  "http://localhost:3001";
+  configured &&
+  (configured.startsWith("http://localhost") ||
+    configured.startsWith("http://127.0.0.1"))
+    ? configured
+    : "/backend";
 
 export type ErrorType<Error> = Error;
 

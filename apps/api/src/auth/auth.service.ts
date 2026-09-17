@@ -155,9 +155,9 @@ export class AuthService {
   }
 
   /**
-   * Cross-origin web (e.g. app.example.com → api.example.com) needs
-   * SameSite=None; Secure so credentialed fetches include the session cookie.
-   * Local same-site (localhost:3000 → :3001) can keep Lax.
+   * Prefer SameSite=Lax (first-party via the Next `/backend` proxy).
+   * SameSite=None; Secure remains available when COOKIE_SAME_SITE=none for
+   * direct cross-origin API access.
    */
   private sessionCookieOptions(): {
     httpOnly: true;
@@ -170,9 +170,7 @@ export class AuthService {
     const sameSite =
       configured === "none" || configured === "lax" || configured === "strict"
         ? configured
-        : isProd
-          ? "none"
-          : "lax";
+        : "lax";
     const secure =
       sameSite === "none" ||
       this.config.get<string>("COOKIE_SECURE") === "true" ||
