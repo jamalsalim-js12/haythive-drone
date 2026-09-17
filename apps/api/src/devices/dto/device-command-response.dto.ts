@@ -17,6 +17,7 @@ export class DeviceCommandResponseDto {
   @ApiPropertyOptional({
     description: "Operator email when known.",
     nullable: true,
+    type: String,
     example: "admin@ioteedom.com",
   })
   actorEmail!: string | null;
@@ -24,6 +25,7 @@ export class DeviceCommandResponseDto {
   @ApiPropertyOptional({
     description: "Human-readable status or error detail.",
     nullable: true,
+    type: String,
   })
   message!: string | null;
 
