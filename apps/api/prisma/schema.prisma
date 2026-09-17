@@ -92,6 +92,12 @@ enum AuditEntityType {
   DEVICE
 }
 
+/// Fault log severity for health / ops views.
+enum FaultSeverity {
+  WARNING
+  CRITICAL
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
@@ -152,6 +158,7 @@ model Device {
   state       DeviceState?
   commands    Command[]
   auditEvents AuditEvent[]
+  faults      Fault[]
 
   @@index([siteId])
 }
@@ -216,4 +223,21 @@ model AuditEvent {
   @@index([deviceId, createdAt])
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+/// Append-only / resolvable fault log entries for the health view.
+model Fault {
+  id         String        @id @default(cuid())
+  deviceId   String
+  code       String
+  severity   FaultSeverity
+  message    String
+  resolved   Boolean       @default(false)
+  createdAt  DateTime      @default(now())
+  resolvedAt DateTime?
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, createdAt])
+  @@index([resolved])
 }

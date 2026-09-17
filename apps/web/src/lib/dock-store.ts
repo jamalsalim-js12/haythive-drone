@@ -7,8 +7,13 @@ import {
   usePostActuatorsCommandsByIdAbort,
 } from "@/api/generated/endpoints/actuators/actuators";
 import {
+  getGetDevicesByIdAuditQueryKey,
+  getGetDevicesByIdCommandsQueryKey,
   getGetDevicesByIdStateQueryKey,
   useGetDevices,
+  useGetDevicesByIdAudit,
+  useGetDevicesByIdCommands,
+  useGetDevicesByIdFaults,
   useGetDevicesByIdState,
 } from "@/api/generated/endpoints/devices/devices";
 import { useSession } from "@/hooks/use-session";
@@ -16,14 +21,14 @@ import {
   getErrorMessage,
   mapCommand,
   mapDevice,
+  mapDeviceAudit,
+  mapDeviceCommand,
+  mapDeviceFault,
   mapDeviceState,
 } from "@/lib/api-mappers";
 import {
   buildCommandOutcomes,
-  buildFaults,
   buildHeartbeatSeries,
-  buildInitialAudit,
-  buildInitialCommands,
   buildSocSeries,
 } from "@/lib/dummy/fixtures";
 import type {
@@ -166,9 +171,9 @@ function createStore() {
     activeDeviceId: null,
     devices: [],
     states: {},
-    commands: buildInitialCommands(),
-    audit: buildInitialAudit(),
-    faults: buildFaults(),
+    commands: [],
+    audit: [],
+    faults: [],
     pendingCommandId: null,
   };
 
@@ -251,6 +256,20 @@ function createStore() {
   function setActiveDevice(id: string) {
     if (!state.devices.some((d) => d.id === id)) return;
     state = { ...state, activeDeviceId: id };
+    emit();
+  }
+
+  function setDeviceLogs(input: {
+    commands: Command[];
+    audit: AuditEvent[];
+    faults: FaultEvent[];
+  }) {
+    state = {
+      ...state,
+      commands: input.commands,
+      audit: input.audit,
+      faults: input.faults,
+    };
     emit();
   }
 
@@ -364,6 +383,7 @@ function createStore() {
     setDevices,
     hydrateState,
     setActiveDevice,
+    setDeviceLogs,
     canCommand,
     whyBlocked,
     applySentCommand,
@@ -447,6 +467,41 @@ export function useDockStore() {
     }
   }, [stateQuery.data]);
 
+  const commandsQuery = useGetDevicesByIdCommands(activeDeviceId, {
+    query: {
+      enabled: Boolean(activeDeviceId),
+      refetchInterval: 10_000,
+    },
+  });
+  const auditQuery = useGetDevicesByIdAudit(activeDeviceId, {
+    query: {
+      enabled: Boolean(activeDeviceId),
+      refetchInterval: 10_000,
+    },
+  });
+  const faultsQuery = useGetDevicesByIdFaults(activeDeviceId, {
+    query: {
+      enabled: Boolean(activeDeviceId),
+      refetchInterval: 10_000,
+    },
+  });
+
+  useEffect(() => {
+    if (
+      commandsQuery.data?.status !== 200 ||
+      auditQuery.data?.status !== 200 ||
+      faultsQuery.data?.status !== 200
+    ) {
+      return;
+    }
+
+    store.setDeviceLogs({
+      commands: commandsQuery.data.data.map(mapDeviceCommand),
+      audit: auditQuery.data.data.map(mapDeviceAudit),
+      faults: faultsQuery.data.data.map(mapDeviceFault),
+    });
+  }, [commandsQuery.data, auditQuery.data, faultsQuery.data]);
+
   async function dispatchCommand(type: CommandType): Promise<DispatchResult> {
     if (type === "ABORT") {
       const blocked = store.whyBlocked("ABORT");
@@ -476,6 +531,12 @@ export function useDockStore() {
         if (deviceId) {
           await queryClient.invalidateQueries({
             queryKey: getGetDevicesByIdStateQueryKey(deviceId),
+          });
+          await queryClient.invalidateQueries({
+            queryKey: getGetDevicesByIdCommandsQueryKey(deviceId),
+          });
+          await queryClient.invalidateQueries({
+            queryKey: getGetDevicesByIdAuditQueryKey(deviceId),
           });
         }
         return { ok: true, commandId: response.data.id };
@@ -516,6 +577,12 @@ export function useDockStore() {
       store.applySentCommand(mapCommand(response.data, actorEmail));
       await queryClient.invalidateQueries({
         queryKey: getGetDevicesByIdStateQueryKey(deviceId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getGetDevicesByIdCommandsQueryKey(deviceId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getGetDevicesByIdAuditQueryKey(deviceId),
       });
       return { ok: true, commandId: response.data.id };
     } catch (error: unknown) {
