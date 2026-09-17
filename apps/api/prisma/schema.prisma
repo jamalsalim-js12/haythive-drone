@@ -14,6 +14,7 @@ datasource db {
 
 /// Dashboard / API operator roles.
 enum UserRole {
+  ADMIN
   OPERATOR
   TECHNICIAN
 }
@@ -105,6 +106,24 @@ model User {
 
   commands    Command[]
   auditEvents AuditEvent[]
+  invitesSent UserInvite[]
+}
+
+/// One-time invite for onboarding a user without public signup.
+model UserInvite {
+  id          String    @id @default(cuid())
+  email       String
+  role        UserRole  @default(OPERATOR)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  invitedById String
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  invitedBy User @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([expiresAt])
 }
 
 /// Optional site grouping; MVP may deploy a single site with one dock.

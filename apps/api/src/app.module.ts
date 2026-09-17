@@ -8,6 +8,7 @@ import { DevicesModule } from "./devices/devices.module";
 import { EdgeModule } from "./edge/edge.module";
 import { HealthModule } from "./health/health.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { UsersModule } from "./users/users.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     PrismaModule,
     EdgeModule,
     AuthModule,
+    UsersModule,
     DeviceIngestModule,
     DevicesModule,
     ActuatorsModule,

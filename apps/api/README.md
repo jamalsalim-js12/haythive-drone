@@ -15,13 +15,16 @@ pnpm --filter @haythive/api prisma:generate
 
 After seeding:
 
-- Email: `operator@haythive.local`
-- Password: `demo`
+- Email: `admin@ioteedom.com` (or `SEED_ADMIN_EMAIL` / `SEED_OPERATOR_EMAIL`)
+- Password: `admin123` (or `SEED_ADMIN_PASSWORD` / `SEED_OPERATOR_PASSWORD`)
+- Role: `ADMIN`
+
+Admins invite users via `POST /users/invites`; invitees accept at `POST /auth/accept-invite` (web: `/invite/{token}`).
 
 ```bash
 # login (sets httpOnly cookie haythive_session)
 curl -c cookies.txt -H 'Content-Type: application/json' \
-  -d '{"email":"operator@haythive.local","password":"demo"}' \
+  -d '{"email":"admin@ioteedom.com","password":"admin123"}' \
   http://localhost:3001/auth/login
 
 curl -b cookies.txt http://localhost:3001/auth/me
