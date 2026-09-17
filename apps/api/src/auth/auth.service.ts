@@ -145,21 +145,45 @@ export class AuthService {
   setSessionCookie(res: Response, accessToken: string): void {
     const maxAgeMs = this.sessionTtlSeconds() * 1000;
     res.cookie(SESSION_COOKIE, accessToken, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: this.config.get<string>("NODE_ENV") === "production",
-      path: "/",
+      ...this.sessionCookieOptions(),
       maxAge: maxAgeMs,
     });
   }
 
   clearSessionCookie(res: Response): void {
-    res.clearCookie(SESSION_COOKIE, {
+    res.clearCookie(SESSION_COOKIE, this.sessionCookieOptions());
+  }
+
+  /**
+   * Cross-origin web (e.g. app.example.com → api.example.com) needs
+   * SameSite=None; Secure so credentialed fetches include the session cookie.
+   * Local same-site (localhost:3000 → :3001) can keep Lax.
+   */
+  private sessionCookieOptions(): {
+    httpOnly: true;
+    sameSite: "lax" | "none" | "strict";
+    secure: boolean;
+    path: string;
+  } {
+    const isProd = this.config.get<string>("NODE_ENV") === "production";
+    const configured = this.config.get<string>("COOKIE_SAME_SITE")?.toLowerCase();
+    const sameSite =
+      configured === "none" || configured === "lax" || configured === "strict"
+        ? configured
+        : isProd
+          ? "none"
+          : "lax";
+    const secure =
+      sameSite === "none" ||
+      this.config.get<string>("COOKIE_SECURE") === "true" ||
+      isProd;
+
+    return {
       httpOnly: true,
-      sameSite: "lax",
-      secure: this.config.get<string>("NODE_ENV") === "production",
+      sameSite,
+      secure,
       path: "/",
-    });
+    };
   }
 
   private async signToken(user: {
