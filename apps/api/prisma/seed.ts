@@ -12,6 +12,78 @@ import * as bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
+type SeedDock = {
+  serial: string;
+  name: string;
+  ingestToken: string;
+  siteId: string;
+  state: {
+    connectivity: Connectivity;
+    opState: OpState;
+    lid: LidState;
+    platform: PlatformState;
+    chargeStatus: ChargeStatus;
+    socPercent: number;
+    readiness: Readiness;
+    readinessReasons: Array<{
+      id: string;
+      label: string;
+      pass: boolean;
+      detail?: string;
+    }>;
+  };
+};
+
+async function upsertAdmin(email: string, password: string): Promise<void> {
+  const passwordHash = await bcrypt.hash(password, 10);
+  await prisma.user.upsert({
+    where: { email },
+    update: {
+      passwordHash,
+      role: UserRole.ADMIN,
+    },
+    create: {
+      email,
+      passwordHash,
+      role: UserRole.ADMIN,
+    },
+  });
+  console.log(`Seeded admin ${email} (password: ${password})`);
+}
+
+async function upsertDock(dock: SeedDock): Promise<void> {
+  const ingestTokenHash = await bcrypt.hash(dock.ingestToken, 10);
+  const device = await prisma.device.upsert({
+    where: { serial: dock.serial },
+    update: {
+      name: dock.name,
+      siteId: dock.siteId,
+      ingestTokenHash,
+      lastHeartbeatAt: new Date(),
+    },
+    create: {
+      name: dock.name,
+      serial: dock.serial,
+      siteId: dock.siteId,
+      ingestTokenHash,
+      lastHeartbeatAt: new Date(),
+    },
+  });
+
+  await prisma.deviceState.upsert({
+    where: { deviceId: device.id },
+    update: { ...dock.state },
+    create: {
+      deviceId: device.id,
+      ...dock.state,
+    },
+  });
+
+  console.log(
+    `Seeded dock ${dock.serial} (${device.id}) — ${dock.name}; ingest token: ${dock.ingestToken}`,
+  );
+}
+
 async function main() {
   const adminEmail =
     process.env.SEED_ADMIN_EMAIL ??
@@ -21,20 +93,9 @@ async function main() {
     process.env.SEED_ADMIN_PASSWORD ??
     process.env.SEED_OPERATOR_PASSWORD ??
     "admin123";
-  const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
 
-  await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {
-      passwordHash: adminPasswordHash,
-      role: UserRole.ADMIN,
-    },
-    create: {
-      email: adminEmail,
-      passwordHash: adminPasswordHash,
-      role: UserRole.ADMIN,
-    },
-  });
+  await upsertAdmin(adminEmail, adminPassword);
+  await upsertAdmin("admin@haythive.com", "admin123");
 
   const operatorEmail = process.env.SEED_DEMO_OPERATOR_EMAIL;
   const operatorPassword = process.env.SEED_DEMO_OPERATOR_PASSWORD ?? "demo";
@@ -57,7 +118,7 @@ async function main() {
     );
   }
 
-  const site = await prisma.site.upsert({
+  const labSite = await prisma.site.upsert({
     where: { id: "seed-site-lab" },
     update: { name: "IoTeedom Lab", timezone: "UTC" },
     create: {
@@ -67,49 +128,29 @@ async function main() {
     },
   });
 
-  const serial = process.env.SEED_DOCK_SERIAL ?? "HH-DOCK-001";
-  const ingestToken = process.env.SEED_DOCK_INGEST_TOKEN ?? "dev-dock-token";
-  const ingestTokenHash = await bcrypt.hash(ingestToken, 10);
-
-  const readinessReasons = [
-    {
-      id: "connectivity",
-      label: "Dock online",
-      pass: true,
-    },
-    {
-      id: "charge",
-      label: "Charging healthy",
-      pass: true,
-      detail: "SOC 86%",
-    },
-    {
-      id: "enclosure",
-      label: "Lid closed / platform down",
-      pass: true,
-    },
-  ];
-
-  const device = await prisma.device.upsert({
-    where: { serial },
-    update: {
-      name: "Lab Dock 1",
-      siteId: site.id,
-      ingestTokenHash,
-      lastHeartbeatAt: new Date(),
-    },
+  const yardSite = await prisma.site.upsert({
+    where: { id: "seed-site-yard" },
+    update: { name: "North Yard", timezone: "UTC" },
     create: {
-      name: "Lab Dock 1",
-      serial,
-      siteId: site.id,
-      ingestTokenHash,
-      lastHeartbeatAt: new Date(),
+      id: "seed-site-yard",
+      name: "North Yard",
+      timezone: "UTC",
     },
   });
 
-  await prisma.deviceState.upsert({
-    where: { deviceId: device.id },
-    update: {
+  const dock1Serial = process.env.SEED_DOCK_SERIAL ?? "HH-DOCK-001";
+  const dock1Token =
+    process.env.SEED_DOCK_INGEST_TOKEN ?? "dev-dock-token";
+  const dock2Serial = process.env.SEED_DOCK_2_SERIAL ?? "HH-DOCK-002";
+  const dock2Token =
+    process.env.SEED_DOCK_2_INGEST_TOKEN ?? "dev-dock-token-2";
+
+  await upsertDock({
+    serial: dock1Serial,
+    name: "Lab Dock 1",
+    ingestToken: dock1Token,
+    siteId: labSite.id,
+    state: {
       connectivity: Connectivity.ONLINE,
       opState: OpState.IDLE,
       lid: LidState.CLOSED,
@@ -117,24 +158,58 @@ async function main() {
       chargeStatus: ChargeStatus.CHARGING,
       socPercent: 86,
       readiness: Readiness.READY,
-      readinessReasons,
-    },
-    create: {
-      deviceId: device.id,
-      connectivity: Connectivity.ONLINE,
-      opState: OpState.IDLE,
-      lid: LidState.CLOSED,
-      platform: PlatformState.DOWN,
-      chargeStatus: ChargeStatus.CHARGING,
-      socPercent: 86,
-      readiness: Readiness.READY,
-      readinessReasons,
+      readinessReasons: [
+        { id: "connectivity", label: "Dock online", pass: true },
+        {
+          id: "charge",
+          label: "Charging healthy",
+          pass: true,
+          detail: "SOC 86%",
+        },
+        {
+          id: "enclosure",
+          label: "Lid closed / platform down",
+          pass: true,
+        },
+      ],
     },
   });
 
-  console.log(`Seeded admin ${adminEmail} (password: ${adminPassword})`);
-  console.log(`Seeded dock ${serial} (${device.id}) at site ${site.name}`);
-  console.log(`Dock ingest token: ${ingestToken}`);
+  await upsertDock({
+    serial: dock2Serial,
+    name: "Yard Dock 2",
+    ingestToken: dock2Token,
+    siteId: yardSite.id,
+    state: {
+      connectivity: Connectivity.DEGRADED,
+      opState: OpState.FAULT,
+      lid: LidState.OPEN,
+      platform: PlatformState.UP,
+      chargeStatus: ChargeStatus.FAULT,
+      socPercent: 42,
+      readiness: Readiness.NOT_READY,
+      readinessReasons: [
+        {
+          id: "connectivity",
+          label: "Dock online",
+          pass: false,
+          detail: "Degraded link",
+        },
+        {
+          id: "charge",
+          label: "Charging healthy",
+          pass: false,
+          detail: "Charge fault · SOC 42%",
+        },
+        {
+          id: "enclosure",
+          label: "Lid closed / platform down",
+          pass: false,
+          detail: "Lid open · platform up",
+        },
+      ],
+    },
+  });
 }
 
 main()

@@ -109,7 +109,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <Select
-              value={activeDeviceId || undefined}
+              items={devices.map((d) => ({ value: d.id, label: d.name }))}
+              value={activeDeviceId || null}
               onValueChange={(value) => {
                 if (typeof value === "string") setActiveDevice(value);
               }}
@@ -119,11 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className="min-w-28 bg-background sm:min-w-40"
                 size="sm"
               >
-                <SelectValue>
-                  {(value) =>
-                    devices.find((d) => d.id === value)?.name ?? "Select dock"
-                  }
-                </SelectValue>
+                <SelectValue placeholder="Select dock" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
