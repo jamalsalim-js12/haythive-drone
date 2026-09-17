@@ -1,10 +1,19 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import type { User, UserRole } from "@prisma/client";
 import * as bcrypt from "bcrypt";
 import type { Response } from "express";
+import { hashInviteToken } from "../common/invite-token";
 import { PrismaService } from "../prisma/prisma.service";
+import { AcceptInviteDto } from "./dto/accept-invite.dto";
+import { InvitePreviewDto } from "./dto/invite-preview.dto";
 import { LoginDto } from "./dto/login.dto";
 import { UserResponseDto } from "./dto/user-response.dto";
 import type { AuthenticatedUser } from "./types/authenticated-user";
@@ -38,6 +47,75 @@ export class AuthService {
 
     const accessToken = await this.signToken(user);
     return { user: this.toUserResponse(user), accessToken };
+  }
+
+  async previewInvite(token: string): Promise<InvitePreviewDto> {
+    const invite = await this.findValidInvite(token);
+    return {
+      email: invite.email,
+      role: invite.role,
+      expiresAt: invite.expiresAt.toISOString(),
+    };
+  }
+
+  async acceptInvite(
+    dto: AcceptInviteDto,
+  ): Promise<{ user: UserResponseDto; accessToken: string }> {
+    const invite = await this.findValidInvite(dto.token);
+
+    const existing = await this.prisma.user.findUnique({
+      where: { email: invite.email },
+    });
+    if (existing) {
+      throw new ConflictException("A user with this email already exists.");
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        email: invite.email,
+        passwordHash,
+        role: invite.role,
+      },
+    });
+
+    await this.prisma.userInvite.update({
+      where: { id: invite.id },
+      data: { acceptedAt: new Date() },
+    });
+
+    const accessToken = await this.signToken(user);
+    return { user: this.toUserResponse(user), accessToken };
+  }
+
+  private async findValidInvite(token: string): Promise<{
+    id: string;
+    email: string;
+    role: UserRole;
+    expiresAt: Date;
+  }> {
+    if (!token.trim()) {
+      throw new BadRequestException("Invite token is required.");
+    }
+
+    const invite = await this.prisma.userInvite.findUnique({
+      where: { tokenHash: hashInviteToken(token) },
+    });
+
+    if (!invite || invite.acceptedAt) {
+      throw new NotFoundException("Invite not found or already used.");
+    }
+
+    if (invite.expiresAt.getTime() <= Date.now()) {
+      throw new BadRequestException("This invite has expired.");
+    }
+
+    return {
+      id: invite.id,
+      email: invite.email,
+      role: invite.role,
+      expiresAt: invite.expiresAt,
+    };
   }
 
   async validatePayload(payload: JwtPayload): Promise<AuthenticatedUser> {

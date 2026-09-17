@@ -25,7 +25,7 @@ import { useSession } from "@/hooks/use-session";
 import { useDockStore } from "@/lib/dock-store";
 import { cn } from "@/lib/utils";
 
-const nav = [
+const baseNav = [
   { href: "/", label: "Dock" },
   { href: "/logs", label: "Logs" },
   { href: "/health", label: "Health" },
@@ -34,9 +34,14 @@ const nav = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { session, isAuthenticated, isLoading, signOut } = useSession();
+  const { user, session, isAuthenticated, isLoading, signOut } = useSession();
   const { devices, activeDeviceId, setActiveDevice } = useDockStore();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const isAdmin = user?.role === "ADMIN";
+  const nav = isAdmin
+    ? [...baseNav, { href: "/admin/users", label: "Users" }]
+    : baseNav;
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -44,10 +49,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, router]);
 
+  useEffect(() => {
+    if (
+      !isLoading &&
+      isAuthenticated &&
+      pathname.startsWith("/admin") &&
+      !isAdmin
+    ) {
+      router.replace("/");
+    }
+  }, [isAdmin, isAuthenticated, isLoading, pathname, router]);
+
   if (isLoading || !isAuthenticated) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background text-sm text-muted-foreground">
         Checking session…
+      </div>
+    );
+  }
+
+  if (pathname.startsWith("/admin") && !isAdmin) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background text-sm text-muted-foreground">
+        Redirecting…
       </div>
     );
   }

@@ -6,7 +6,8 @@ Source of truth: `schema.prisma`. Keep enums aligned with `apps/web/src/lib/type
 
 | Model | Purpose |
 | --- | --- |
-| `User` | Operator / technician accounts |
+| `User` | Admin / operator / technician accounts |
+| `UserInvite` | One-time invite tokens for onboarding users |
 | `Site` | Optional grouping for docks |
 | `Device` | Dock registration + heartbeat |
 | `DeviceState` | Latest lid/platform/charge/readiness projection (1:1) |
@@ -17,7 +18,7 @@ Source of truth: `schema.prisma`. Keep enums aligned with `apps/web/src/lib/type
 
 | Enum | Values |
 | --- | --- |
-| `UserRole` | `OPERATOR`, `TECHNICIAN` |
+| `UserRole` | `ADMIN`, `OPERATOR`, `TECHNICIAN` |
 | `Connectivity` | `ONLINE`, `OFFLINE`, `DEGRADED` |
 | `OpState` | `IDLE`, `MOVING`, `FAULT`, `SERVICE` |
 | `LidState` | `OPEN`, `CLOSED`, `MOVING`, `UNKNOWN` |

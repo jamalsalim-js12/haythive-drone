@@ -37,7 +37,9 @@ pnpm dev:api
 pnpm dev:web
 ```
 
-Demo login: `operator@haythive.local` / `demo`
+Demo admin login: `admin@ioteedom.com` / `admin123` (override with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`).
+
+Admins manage users at `/admin/users` (invite link → `/invite/{token}`).
 
 - API health: http://localhost:3001/health
 - Swagger: http://localhost:3001/api/docs

@@ -6,10 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type UserResponseDtoRole = typeof UserResponseDtoRole[keyof typeof UserResponseDtoRole];
+/**
+ * Role granted when the invite is accepted.
+ */
+export type CreateUserInviteDtoRole = typeof CreateUserInviteDtoRole[keyof typeof CreateUserInviteDtoRole];
 
 
-export const UserResponseDtoRole = {
+export const CreateUserInviteDtoRole = {
   ADMIN: 'ADMIN',
   OPERATOR: 'OPERATOR',
   TECHNICIAN: 'TECHNICIAN',

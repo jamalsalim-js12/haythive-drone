@@ -13,22 +13,49 @@ import * as bcrypt from "bcrypt";
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.SEED_OPERATOR_EMAIL ?? "operator@haythive.local";
-  const password = process.env.SEED_OPERATOR_PASSWORD ?? "demo";
-  const passwordHash = await bcrypt.hash(password, 10);
+  const adminEmail =
+    process.env.SEED_ADMIN_EMAIL ??
+    process.env.SEED_OPERATOR_EMAIL ??
+    "admin@ioteedom.com";
+  const adminPassword =
+    process.env.SEED_ADMIN_PASSWORD ??
+    process.env.SEED_OPERATOR_PASSWORD ??
+    "admin123";
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
 
   await prisma.user.upsert({
-    where: { email },
+    where: { email: adminEmail },
     update: {
-      passwordHash,
-      role: UserRole.OPERATOR,
+      passwordHash: adminPasswordHash,
+      role: UserRole.ADMIN,
     },
     create: {
-      email,
-      passwordHash,
-      role: UserRole.OPERATOR,
+      email: adminEmail,
+      passwordHash: adminPasswordHash,
+      role: UserRole.ADMIN,
     },
   });
+
+  const operatorEmail = process.env.SEED_DEMO_OPERATOR_EMAIL;
+  const operatorPassword = process.env.SEED_DEMO_OPERATOR_PASSWORD ?? "demo";
+  if (operatorEmail && operatorEmail !== adminEmail) {
+    const operatorPasswordHash = await bcrypt.hash(operatorPassword, 10);
+    await prisma.user.upsert({
+      where: { email: operatorEmail },
+      update: {
+        passwordHash: operatorPasswordHash,
+        role: UserRole.OPERATOR,
+      },
+      create: {
+        email: operatorEmail,
+        passwordHash: operatorPasswordHash,
+        role: UserRole.OPERATOR,
+      },
+    });
+    console.log(
+      `Seeded operator ${operatorEmail} (password: ${operatorPassword})`,
+    );
+  }
 
   const site = await prisma.site.upsert({
     where: { id: "seed-site-lab" },
@@ -105,7 +132,7 @@ async function main() {
     },
   });
 
-  console.log(`Seeded operator ${email} (password: ${password})`);
+  console.log(`Seeded admin ${adminEmail} (password: ${adminPassword})`);
   console.log(`Seeded dock ${serial} (${device.id}) at site ${site.name}`);
   console.log(`Dock ingest token: ${ingestToken}`);
 }
