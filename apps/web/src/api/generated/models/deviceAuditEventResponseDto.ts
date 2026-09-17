@@ -5,7 +5,6 @@
  * Control plane for the HaytHive dock management MVP: lid, platform, charging, and readiness.
  * OpenAPI spec version: 0.1.0
  */
-import type { DeviceAuditEventResponseDtoActorEmail } from './deviceAuditEventResponseDtoActorEmail';
 import type { DeviceAuditEventResponseDtoDeviceId } from './deviceAuditEventResponseDtoDeviceId';
 import type { DeviceAuditEventResponseDtoEntityType } from './deviceAuditEventResponseDtoEntityType';
 import type { DeviceAuditEventResponseDtoMeta } from './deviceAuditEventResponseDtoMeta';
@@ -24,7 +23,7 @@ export interface DeviceAuditEventResponseDto {
      * Operator email when known.
      * @nullable
      */
-  actorEmail?: DeviceAuditEventResponseDtoActorEmail;
+  actorEmail?: string | null;
   /**
      * Optional structured metadata.
      * @nullable

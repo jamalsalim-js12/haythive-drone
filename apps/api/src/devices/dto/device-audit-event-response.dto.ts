@@ -23,6 +23,7 @@ export class DeviceAuditEventResponseDto {
   @ApiPropertyOptional({
     description: "Operator email when known.",
     nullable: true,
+    type: String,
     example: "admin@ioteedom.com",
   })
   actorEmail!: string | null;

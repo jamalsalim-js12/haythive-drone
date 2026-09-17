@@ -102,7 +102,8 @@ export function mapDeviceAudit(dto: DeviceAuditEventResponseDto): AuditEvent {
     id: dto.id,
     deviceId: asString(dto.deviceId),
     action: dto.action,
-    actorEmail: dto.actorEmail ?? null,
+    actorEmail:
+      typeof dto.actorEmail === "string" ? dto.actorEmail : null,
     entityType,
     entityId: dto.entityId,
     createdAt: dto.createdAt,
