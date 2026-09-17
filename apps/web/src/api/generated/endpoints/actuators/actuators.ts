@@ -67,7 +67,7 @@ export const getPostActuatorsCommandsUrl = () => {
 }
 
 /**
- * Persists a lid or platform command, validates soft interlocks, marks it SENT, and dispatches it to the edge adapter. The stub edge later ACKs and updates projected dock state.
+ * Persists a lid or platform command, validates soft interlocks (offline/fault/service, motion, lid/platform matrix), marks it SENT, and dispatches it to the edge adapter. Illegal sequences return 409 Conflict.
  * @summary Dispatch a dock actuator command
  */
 export const postActuatorsCommands = async (createActuatorCommandDto: CreateActuatorCommandDto, options?: Parameters<typeof customFetch>[1]): Promise<postActuatorsCommandsResponse> => {

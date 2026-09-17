@@ -25,6 +25,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AcceptInviteDto,
+  InvitePreviewDto,
   LoginDto,
   PostAuthLogout200,
   UserResponseDto
@@ -366,3 +368,245 @@ export function useGetAuthMe<TData = Awaited<ReturnType<typeof getAuthMe>>, TErr
 
 
 
+export type getAuthInvitesByTokenResponse200 = {
+  data: InvitePreviewDto
+  status: 200
+}
+
+export type getAuthInvitesByTokenResponse400 = {
+  data: void
+  status: 400
+}
+
+export type getAuthInvitesByTokenResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getAuthInvitesByTokenResponseSuccess = (getAuthInvitesByTokenResponse200) & {
+  headers: Headers;
+};
+export type getAuthInvitesByTokenResponseError = (getAuthInvitesByTokenResponse400 | getAuthInvitesByTokenResponse404) & {
+  headers: Headers;
+};
+
+export type getAuthInvitesByTokenResponse = (getAuthInvitesByTokenResponseSuccess | getAuthInvitesByTokenResponseError)
+
+export const getGetAuthInvitesByTokenUrl = (token: string,) => {
+
+
+
+
+  return `/auth/invites/${token}`
+}
+
+/**
+ * Returns email and role for a valid invite token so the accept form can be pre-filled. Public.
+ * @summary Preview an invite
+ */
+export const getAuthInvitesByToken = async (token: string, options?: Parameters<typeof customFetch>[1]): Promise<getAuthInvitesByTokenResponse> => {
+
+  return customFetch<getAuthInvitesByTokenResponse>(getGetAuthInvitesByTokenUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAuthInvitesByTokenQueryKey = (token: string,) => {
+    return [
+    `/auth/invites/${token}`
+    ] as const;
+    }
+
+
+export const getGetAuthInvitesByTokenQueryOptions = <TData = Awaited<ReturnType<typeof getAuthInvitesByToken>>, TError = ErrorType<void>>(token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthInvitesByToken>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAuthInvitesByTokenQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuthInvitesByToken>>> = ({ signal }) => getAuthInvitesByToken(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: token !== null && token !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAuthInvitesByToken>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAuthInvitesByTokenQueryResult = NonNullable<Awaited<ReturnType<typeof getAuthInvitesByToken>>>
+export type GetAuthInvitesByTokenQueryError = ErrorType<void>
+
+
+export function useGetAuthInvitesByToken<TData = Awaited<ReturnType<typeof getAuthInvitesByToken>>, TError = ErrorType<void>>(
+ token: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthInvitesByToken>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuthInvitesByToken>>,
+          TError,
+          Awaited<ReturnType<typeof getAuthInvitesByToken>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuthInvitesByToken<TData = Awaited<ReturnType<typeof getAuthInvitesByToken>>, TError = ErrorType<void>>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthInvitesByToken>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuthInvitesByToken>>,
+          TError,
+          Awaited<ReturnType<typeof getAuthInvitesByToken>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuthInvitesByToken<TData = Awaited<ReturnType<typeof getAuthInvitesByToken>>, TError = ErrorType<void>>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthInvitesByToken>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Preview an invite
+ */
+
+export function useGetAuthInvitesByToken<TData = Awaited<ReturnType<typeof getAuthInvitesByToken>>, TError = ErrorType<void>>(
+ token: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthInvitesByToken>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAuthInvitesByTokenQueryOptions(token,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type postAuthAcceptInviteResponse200 = {
+  data: UserResponseDto
+  status: 200
+}
+
+export type postAuthAcceptInviteResponse400 = {
+  data: void
+  status: 400
+}
+
+export type postAuthAcceptInviteResponse404 = {
+  data: void
+  status: 404
+}
+
+export type postAuthAcceptInviteResponse409 = {
+  data: void
+  status: 409
+}
+
+export type postAuthAcceptInviteResponseSuccess = (postAuthAcceptInviteResponse200) & {
+  headers: Headers;
+};
+export type postAuthAcceptInviteResponseError = (postAuthAcceptInviteResponse400 | postAuthAcceptInviteResponse404 | postAuthAcceptInviteResponse409) & {
+  headers: Headers;
+};
+
+export type postAuthAcceptInviteResponse = (postAuthAcceptInviteResponseSuccess | postAuthAcceptInviteResponseError)
+
+export const getPostAuthAcceptInviteUrl = () => {
+
+
+
+
+  return `/auth/accept-invite`
+}
+
+/**
+ * Creates the invited user with the chosen password, marks the invite used, and signs them in.
+ * @summary Accept an invite
+ */
+export const postAuthAcceptInvite = async (acceptInviteDto: AcceptInviteDto, options?: Parameters<typeof customFetch>[1]): Promise<postAuthAcceptInviteResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<postAuthAcceptInviteResponse>(getPostAuthAcceptInviteUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(acceptInviteDto)
+  }
+);}
+
+
+
+
+
+export const getPostAuthAcceptInviteMutationKey = () => ['postAuthAcceptInvite'] as const;
+
+export const getPostAuthAcceptInviteMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthAcceptInvite>>, TError,PostAuthAcceptInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postAuthAcceptInvite>>, TError,PostAuthAcceptInviteMutationVariables, TContext> => {
+
+const mutationKey = getPostAuthAcceptInviteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postAuthAcceptInvite>>, PostAuthAcceptInviteMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  postAuthAcceptInvite(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostAuthAcceptInviteMutationResult = NonNullable<Awaited<ReturnType<typeof postAuthAcceptInvite>>>
+    export type PostAuthAcceptInviteMutationBody = AcceptInviteDto
+    export type PostAuthAcceptInviteMutationError = ErrorType<void>
+    export type PostAuthAcceptInviteMutationVariables = {data: AcceptInviteDto}
+
+    /**
+ * @summary Accept an invite
+ */
+export const usePostAuthAcceptInvite = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthAcceptInvite>>, TError,PostAuthAcceptInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postAuthAcceptInvite>>,
+        TError,
+        PostAuthAcceptInviteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPostAuthAcceptInviteMutationOptions(options), queryClient);
+    }

@@ -4,12 +4,16 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Res,
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiBadRequestResponse,
+  ApiConflictResponse,
   ApiCookieAuth,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -18,6 +22,8 @@ import {
 import type { Response } from "express";
 import { AuthService } from "./auth.service";
 import { CurrentUser } from "./decorators/current-user.decorator";
+import { AcceptInviteDto } from "./dto/accept-invite.dto";
+import { InvitePreviewDto } from "./dto/invite-preview.dto";
 import { LoginDto } from "./dto/login.dto";
 import { UserResponseDto } from "./dto/user-response.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
@@ -78,5 +84,42 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: "Missing or invalid session." })
   me(@CurrentUser() user: AuthenticatedUser): UserResponseDto {
     return this.authService.toUserResponse(user);
+  }
+
+  @Get("invites/:token")
+  @ApiOperation({
+    operationId: "getAuthInvitesByToken",
+    summary: "Preview an invite",
+    description:
+      "Returns email and role for a valid invite token so the accept form can be pre-filled. Public.",
+  })
+  @ApiOkResponse({ type: InvitePreviewDto })
+  @ApiBadRequestResponse({ description: "Invite expired or invalid." })
+  @ApiNotFoundResponse({ description: "Invite not found or already used." })
+  getAuthInvitesByToken(
+    @Param("token") token: string,
+  ): Promise<InvitePreviewDto> {
+    return this.authService.previewInvite(token);
+  }
+
+  @Post("accept-invite")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    operationId: "postAuthAcceptInvite",
+    summary: "Accept an invite",
+    description:
+      "Creates the invited user with the chosen password, marks the invite used, and signs them in.",
+  })
+  @ApiOkResponse({ type: UserResponseDto })
+  @ApiBadRequestResponse({ description: "Invite expired or invalid." })
+  @ApiConflictResponse({ description: "User with this email already exists." })
+  @ApiNotFoundResponse({ description: "Invite not found or already used." })
+  async postAuthAcceptInvite(
+    @Body() dto: AcceptInviteDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<UserResponseDto> {
+    const { user, accessToken } = await this.authService.acceptInvite(dto);
+    this.authService.setSessionCookie(res, accessToken);
+    return user;
   }
 }

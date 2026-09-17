@@ -72,6 +72,249 @@
         "tags": ["Auth"]
       }
     },
+    "/auth/invites/{token}": {
+      "get": {
+        "description": "Returns email and role for a valid invite token so the accept form can be pre-filled. Public.",
+        "operationId": "getAuthInvitesByToken",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/InvitePreviewDto" }
+              }
+            }
+          },
+          "400": { "description": "Invite expired or invalid." },
+          "404": { "description": "Invite not found or already used." }
+        },
+        "summary": "Preview an invite",
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/accept-invite": {
+      "post": {
+        "description": "Creates the invited user with the chosen password, marks the invite used, and signs them in.",
+        "operationId": "postAuthAcceptInvite",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AcceptInviteDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserResponseDto" }
+              }
+            }
+          },
+          "400": { "description": "Invite expired or invalid." },
+          "404": { "description": "Invite not found or already used." },
+          "409": { "description": "User with this email already exists." }
+        },
+        "summary": "Accept an invite",
+        "tags": ["Auth"]
+      }
+    },
+    "/users": {
+      "get": {
+        "description": "Returns all platform users. Admin only.",
+        "operationId": "getUsers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/UserListItemDto" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid session." },
+          "403": { "description": "Admin access required." }
+        },
+        "security": [{ "cookie": [] }],
+        "summary": "List users",
+        "tags": ["Users"]
+      }
+    },
+    "/users/invites": {
+      "get": {
+        "description": "Returns outstanding (unaccepted) invites. Admin only.",
+        "operationId": "getUsersInvites",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserInviteResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid session." },
+          "403": { "description": "Admin access required." }
+        },
+        "security": [{ "cookie": [] }],
+        "summary": "List pending invites",
+        "tags": ["Users"]
+      },
+      "post": {
+        "description": "Creates a one-time invite link for an email and role. The raw token is returned only once so the admin can share it.",
+        "operationId": "postUsersInvites",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateUserInviteDto" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateUserInviteResponseDto"
+                }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid session." },
+          "403": { "description": "Admin access required." },
+          "409": { "description": "User with this email already exists." }
+        },
+        "security": [{ "cookie": [] }],
+        "summary": "Invite a user",
+        "tags": ["Users"]
+      }
+    },
+    "/users/invites/{id}": {
+      "delete": {
+        "description": "Deletes a pending invite so the link can no longer be used.",
+        "operationId": "deleteUsersInvitesById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "ok": { "type": "boolean", "example": true } }
+                }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid session." },
+          "403": { "description": "Admin access required." },
+          "404": { "description": "Invite not found." }
+        },
+        "security": [{ "cookie": [] }],
+        "summary": "Revoke an invite",
+        "tags": ["Users"]
+      }
+    },
+    "/users/{id}": {
+      "patch": {
+        "description": "Changes a user's role. Admins cannot demote or remove the last admin, or change their own role.",
+        "operationId": "patchUsersById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateUserDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserListItemDto" }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid session." },
+          "403": { "description": "Admin access required or action denied." },
+          "404": { "description": "User not found." }
+        },
+        "security": [{ "cookie": [] }],
+        "summary": "Update a user role",
+        "tags": ["Users"]
+      },
+      "delete": {
+        "description": "Removes a user account. Cannot delete yourself or the last admin.",
+        "operationId": "deleteUsersById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "ok": { "type": "boolean", "example": true } }
+                }
+              }
+            }
+          },
+          "401": { "description": "Missing or invalid session." },
+          "403": { "description": "Admin access required or action denied." },
+          "404": { "description": "User not found." }
+        },
+        "security": [{ "cookie": [] }],
+        "summary": "Delete a user",
+        "tags": ["Users"]
+      }
+    },
     "/device/ingest": {
       "post": {
         "description": "Edge/simulator endpoint. Authenticates with device serial + ingest token, updates lastHeartbeatAt and projected dock state, and marks the dock ONLINE.",
@@ -208,7 +451,7 @@
     },
     "/actuators/commands": {
       "post": {
-        "description": "Persists a lid or platform command, validates soft interlocks, marks it SENT, and dispatches it to the edge adapter. The stub edge later ACKs and updates projected dock state.",
+        "description": "Persists a lid or platform command, validates soft interlocks (offline/fault/service, motion, lid/platform matrix), marks it SENT, and dispatches it to the edge adapter. Illegal sequences return 409 Conflict.",
         "operationId": "postActuatorsCommands",
         "parameters": [],
         "requestBody": {
@@ -358,11 +601,178 @@
           "email": { "type": "string", "example": "operator@haythive.local" },
           "role": {
             "type": "string",
-            "enum": ["OPERATOR", "TECHNICIAN"],
+            "enum": ["ADMIN", "OPERATOR", "TECHNICIAN"],
             "example": "OPERATOR"
           }
         },
         "required": ["id", "email", "role"]
+      },
+      "InvitePreviewDto": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "example": "operator@example.com" },
+          "role": {
+            "type": "string",
+            "enum": ["ADMIN", "OPERATOR", "TECHNICIAN"],
+            "example": "OPERATOR"
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-09-24T12:00:00.000Z"
+          }
+        },
+        "required": ["email", "role", "expiresAt"]
+      },
+      "AcceptInviteDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Invite token from the invitation link.",
+            "example": "a1b2c3d4e5f6..."
+          },
+          "password": {
+            "type": "string",
+            "description": "Password the invitee will use to sign in.",
+            "example": "secure-password",
+            "minLength": 8
+          }
+        },
+        "required": ["token", "password"]
+      },
+      "UserListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "clx0123456789" },
+          "email": { "type": "string", "example": "operator@haythive.local" },
+          "role": {
+            "type": "string",
+            "enum": ["ADMIN", "OPERATOR", "TECHNICIAN"],
+            "example": "OPERATOR"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-09-17T12:00:00.000Z"
+          }
+        },
+        "required": ["id", "email", "role", "createdAt"]
+      },
+      "UserInviteResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "clxinvite0123" },
+          "email": { "type": "string", "example": "operator@example.com" },
+          "role": {
+            "type": "string",
+            "enum": ["ADMIN", "OPERATOR", "TECHNICIAN"],
+            "example": "OPERATOR"
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-09-24T12:00:00.000Z"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-09-17T12:00:00.000Z"
+          },
+          "acceptedAt": {
+            "type": "object",
+            "description": "Set when the invite has been accepted.",
+            "example": null,
+            "nullable": true
+          },
+          "invitedByEmail": {
+            "type": "string",
+            "example": "admin@ioteedom.com"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "expiresAt",
+          "createdAt",
+          "invitedByEmail"
+        ]
+      },
+      "CreateUserInviteDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Email address to invite.",
+            "example": "operator@example.com"
+          },
+          "role": {
+            "type": "string",
+            "description": "Role granted when the invite is accepted.",
+            "enum": ["ADMIN", "OPERATOR", "TECHNICIAN"],
+            "example": "OPERATOR"
+          }
+        },
+        "required": ["email", "role"]
+      },
+      "CreateUserInviteResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "clxinvite0123" },
+          "email": { "type": "string", "example": "operator@example.com" },
+          "role": {
+            "type": "string",
+            "enum": ["ADMIN", "OPERATOR", "TECHNICIAN"],
+            "example": "OPERATOR"
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-09-24T12:00:00.000Z"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-09-17T12:00:00.000Z"
+          },
+          "acceptedAt": {
+            "type": "object",
+            "description": "Set when the invite has been accepted.",
+            "example": null,
+            "nullable": true
+          },
+          "invitedByEmail": {
+            "type": "string",
+            "example": "admin@ioteedom.com"
+          },
+          "token": {
+            "type": "string",
+            "description": "One-time invite token. Shown only when the invite is created; share via the invite URL.",
+            "example": "a1b2c3d4e5f6..."
+          },
+          "inviteUrl": {
+            "type": "string",
+            "description": "Absolute invite URL for the invitee.",
+            "example": "http://localhost:3000/invite/a1b2c3d4e5f6..."
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "expiresAt",
+          "createdAt",
+          "invitedByEmail",
+          "token",
+          "inviteUrl"
+        ]
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "Updated platform role.",
+            "enum": ["ADMIN", "OPERATOR", "TECHNICIAN"],
+            "example": "TECHNICIAN"
+          }
+        },
+        "required": ["role"]
       },
       "ReadinessReasonDto": {
         "type": "object",

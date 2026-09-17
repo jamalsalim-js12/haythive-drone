@@ -19,8 +19,8 @@ export function LoginForm() {
   const queryClient = useQueryClient();
   const { isAuthenticated, isLoading } = useSession();
   const loginMutation = usePostAuthLogin();
-  const [email, setEmail] = useState("operator@haythive.local");
-  const [password, setPassword] = useState("demo");
+  const [email, setEmail] = useState("admin@ioteedom.com");
+  const [password, setPassword] = useState("admin123");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -128,7 +128,7 @@ export function LoginForm() {
             {loginMutation.isPending ? "Signing in…" : "Sign in"}
           </Button>
           <p className="text-center text-xs text-muted-foreground">
-            Demo: operator@haythive.local / demo
+            Demo: admin@ioteedom.com / admin123
           </p>
         </form>
       </div>
